@@ -1,0 +1,10 @@
+# Deny all by default
+*
+
+# Project root files
+!.gitignore
+!Makefile
+!README.md
+!docker-compose.yaml
+!docker-compose.gpu.yaml
+

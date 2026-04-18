@@ -1,0 +1,76 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ./data/ollama:/root/.ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    environment:
+      OLLAMA_KEEP_ALIVE: "24h"
+      OLLAMA_MAX_LOADED_MODELS: "2"
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-sf", "http://localhost:11434/api/version" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: "http://ollama:11434"
+      PULL_MODELS: |
+        0xIbra/supergemma4-26b-uncensored-gguf-v2
+        hf.co/mradermacher/Llama-4-Scout-17B-16E-Instruct-abliterated-GGUF:Q4_K_M
+        aispin/qwen2.5-7b-instruct-abliterated-v2.q4_k_s.gguf
+        dfebrero/DavidAU-Llama-3.2-8X3B-MOE-Dark-Champion-Instruct-uncensored-abliterated-18.4B
+    command:
+      - sh
+      - -c
+      - |
+        echo "$PULL_MODELS" | while IFS= read -r model; do
+          [ -z "$model" ] && continue
+          ollama pull "$model" || echo "WARNING: Failed to pull $model"
+        done
+    restart: "no"
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ./data/open-webui:/app/backend/data
+    ports:
+      - "${WEBUI_PORT:-3000}:8080"
+    environment:
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      WEBUI_SECRET_KEY: "${WEBUI_SECRET_KEY:-please-change-this-secret}"
+      WEBUI_AUTH: "${WEBUI_AUTH:-false}"
+      DEFAULT_MODELS: "${DEFAULT_MODEL:-aispin/qwen2.5-7b-instruct-abliterated-v2.q4_k_s.gguf}"
+      ENABLE_SIGNUP: "true"
+    restart: unless-stopped
+
+  cli:
+    image: paulgauthier/aider:latest
+    container_name: aicli
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - "${MOUNT_DIR:-.}:/app"
+    environment:
+      OLLAMA_API_BASE: "http://ollama:11434"
+      AIDER_MODEL: "ollama_chat/${DEFAULT_MODEL:-qwen2.5:7b}"
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    profiles:
+      - cli
