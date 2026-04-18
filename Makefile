@@ -23,7 +23,6 @@ open-ui:
 exec-shell:
 	docker compose --profile cli run --rm --entrypoint bash cli
 
-
 .PHONY: list-models
 list-models:
 	docker exec ollama ollama list
@@ -31,3 +30,40 @@ list-models:
 .PHONY: model-pull
 model-pull:
 	docker exec ollama ollama pull $(if $(MODEL),$(MODEL),qwen2.5:7b)
+
+.PHONY: chat
+chat:
+	@model="$(if $(MODEL),$(MODEL),qwen25:latest)"; \
+	case "$$model" in \
+		super-gemma) resolved_model="super-gemma:latest" ;; \
+		llama4) resolved_model="llama4:latest" ;; \
+		qwen25) resolved_model="qwen25:latest" ;; \
+		dark-champion) resolved_model="dark-champion:latest" ;; \
+		*:*) resolved_model="$$model" ;; \
+		*) resolved_model="$$model:latest" ;; \
+	esac; \
+	docker compose --profile cli run --rm \
+		-e AIDER_MODEL="ollama_chat/$$resolved_model" \
+		cli \
+		--no-git \
+		--no-auto-commits \
+		--no-dirty-commits \
+		--map-tokens 0
+
+.PHONY: code
+code:
+	@model="$(if $(MODEL),$(MODEL),qwen25:latest)"; \
+	case "$$model" in \
+		super-gemma) resolved_model="super-gemma:latest" ;; \
+		llama4) resolved_model="llama4:latest" ;; \
+		qwen25) resolved_model="qwen25:latest" ;; \
+		dark-champion) resolved_model="dark-champion:latest" ;; \
+		*:*) resolved_model="$$model" ;; \
+		*) resolved_model="$$model:latest" ;; \
+	esac; \
+	docker compose --profile cli run --rm \
+		-e AIDER_MODEL="ollama_chat/$$resolved_model" \
+		cli \
+		--no-auto-commits \
+		--no-dirty-commits \
+		$(ARGS)
