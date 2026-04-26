@@ -25,6 +25,7 @@
 | `dolphin:latest` | Llama 3.1 8B | Dense 8B (uncensored) | 128K | ~5GB | セキュリティ研究・CTF・ペネトレーション・汎用 uncensored | Apple Silicon 16GB+ / NVIDIA 8GB+ |
 | `deepseek-r1:latest` | DeepSeek R1 Distill 14B | Dense 14B (abliterated) | 128K | ~9GB | 推論チェーン × uncensored（脅威分析・ロジック問題） | Apple Silicon 32GB+ / NVIDIA 16GB+ |
 | `hermes:latest` | Nous Hermes 3 8B | Dense 8B (abliterated) | 128K | ~5GB | 医療・薬学・法律グレーゾーン・専門知識 | Apple Silicon 16GB+ / NVIDIA 8GB+ |
+| `qwen36:latest` | Alibaba Qwen 3.6 27B | Dense 27B (uncensored / aggressive) | 256K | ~18GB | 高品質汎用・長文・コーディング (アグレッシブ uncensored) | Apple Silicon 32GB+ / NVIDIA 24GB+ |
 
 ### モデルの使い分け
 
@@ -35,7 +36,8 @@
 ├── 小説・RP・NSFW コンテンツ    → dark-champion
 ├── セキュリティ・CTF・exploit    → dolphin
 ├── 推論が必要な難問・脅威分析   → deepseek-r1
-└── 医療・薬学・法律の詳細情報   → hermes
+├── 医療・薬学・法律の詳細情報   → hermes
+└── 大型・高品質・アグレッシブ uncensored → qwen36
 ```
 
 ---
@@ -86,3 +88,11 @@
 - **推奨マシン:** Apple Silicon 16GB+ / NVIDIA 8GB+
 - **Claude Code との差分:** 「医師に相談してください」「法律の専門家に確認してください」といった回避をせず、具体的な情報を直接提供
 - **ライセンス:** Apache 2.0
+
+#### `qwen36:latest`
+- **Ollamaタグ:** `hf.co/HauhauCS/Qwen3.6-27B-Uncensored-HauhauCS-Aggressive:Q4_K_P`
+- **特徴:** Qwen 3.6 27B Dense をベースに HauhauCS が Uncensored 化した "Aggressive" 版（拒否率を最小化し直接的に回答）。imatrix を用いた独自 K_P 量子化（Q4_K_P, 18GB）で同サイズ標準量子化より品質劣化が小さい。マルチモーダル用 mmproj も同梱（本構成ではテキストのみ）。Reddit r/LocalLLaMA で 2026-04 頃に話題化。
+- **推奨マシン:** Apple Silicon 32GB+ / NVIDIA 24GB+（Q4_K_P で約18GB の VRAM/メモリを消費）
+- **Claude Code との差分:** 27B クラスの汎用品質を保ったままセキュリティ・創作・センシティブ領域で拒否を返さない
+- **ライセンス:** Qwen Research / Tongyi Qianwen License（派生）
+- **備考:** K_P 量子化は非標準のため Ollama バージョンによっては pull に失敗することがある。失敗時は `Q4_K_M` 系を持つ別リポジトリへの差し替えを検討

@@ -38,6 +38,7 @@ chat:
 		super-gemma) resolved_model="super-gemma:latest" ;; \
 		llama4) resolved_model="llama4:latest" ;; \
 		qwen25) resolved_model="qwen25:latest" ;; \
+		qwen36) resolved_model="qwen36:latest" ;; \
 		dark-champion) resolved_model="dark-champion:latest" ;; \
 		*:*) resolved_model="$$model" ;; \
 		*) resolved_model="$$model:latest" ;; \
@@ -57,6 +58,7 @@ code:
 		super-gemma) resolved_model="super-gemma:latest" ;; \
 		llama4) resolved_model="llama4:latest" ;; \
 		qwen25) resolved_model="qwen25:latest" ;; \
+		qwen36) resolved_model="qwen36:latest" ;; \
 		dark-champion) resolved_model="dark-champion:latest" ;; \
 		*:*) resolved_model="$$model" ;; \
 		*) resolved_model="$$model:latest" ;; \
