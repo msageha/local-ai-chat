@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  # push トリガーは置かない: merge 後の main での再実行は PR で検証済みのため不要
+  # (secret scan の main 全履歴は gitleaks.yaml の週次 schedule が再スキャンする)。
+  # デフォルト types の明示: closed 等 CI が不要な PR イベントでは走らせない
+  pull_request:
+    types: [opened, synchronize, reopened]
+  # mise-lock.yaml が GITHUB_TOKEN で push / 作成する PR には workflow run が自動発火しないため、
+  # PR head ブランチへ明示的に dispatch できるようにする
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # fail-fast: 失敗した job が run 全体をキャンセルする (他の並列チェックを止める) のに必要
+  actions: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# 各チェックは reusable workflow として並列実行し、1 つでも失敗したら
+# その時点で run 全体をキャンセルする (fail-fast)。
+# チェックを追加するときはここに job を足し、呼び出される側は
+# workflow_call + fail-fast input を持つ reusable workflow として実装する。
+jobs:
+  prek:
+    uses: ./.github/workflows/prek.yaml
+    with:
+      fail-fast: true
+
+  gitleaks:
+    uses: ./.github/workflows/gitleaks.yaml
+    with:
+      fail-fast: true

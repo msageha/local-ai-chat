@@ -1,0 +1,12 @@
+# 起動時に pull するモデル。1 行 1 モデルで `<alias> <source>`
+#   alias:  Ollama 上での名前 (`<alias>:latest` として登録される)
+#   source: pull 元のモデル名 (Ollama ライブラリ / Hugging Face)
+# 追加・変更後は `mise run pull` で反映する
+super-gemma    0xIbra/supergemma4-26b-uncensored-gguf-v2:Q4_K_M
+llama4         llama4:17b-scout-16e-instruct-q4_K_M
+qwen25         aispin/qwen2.5-7b-instruct-abliterated-v2.q4_k_s.gguf
+dark-champion  dfebrero/DavidAU-Llama-3.2-8X3B-MOE-Dark-Champion-Instruct-uncensored-abliterated-18.4B
+dolphin        dolphin3:8b
+deepseek-r1    huihui-ai/deepseek-r1-abliterated:14b
+hermes         huihui-ai/hermes3-abliterated:8b
+qwen36         hf.co/HauhauCS/Qwen3.6-27B-Uncensored-HauhauCS-Aggressive:Q4_K_P

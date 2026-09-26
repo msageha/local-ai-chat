@@ -1,3 +1,4 @@
+# NVIDIA GPU を ollama に割り当てる override。.env の COMPOSE_FILE で compose.yaml に重ねる
 services:
   ollama:
     deploy:
@@ -6,4 +7,4 @@ services:
           devices:
             - driver: nvidia
               count: all
-              capabilities: [ gpu ]
+              capabilities: [gpu]

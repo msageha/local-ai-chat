@@ -4,11 +4,40 @@
 
 ## サービス構成
 
-| サービス | 説明 | デフォルトポート |
-|---------|------|----------------|
-| `ollama` | LLM バックエンド (OpenAI 互換 API) | 11434 |
-| `open-webui` | ChatGPT 風 Web UI | 3000 |
-| `cli` | Claude Code / Codex 風 CLI | — (対話型) |
+| サービス      | 説明                                                                | デフォルトポート |
+| ------------- | ------------------------------------------------------------------- | ---------------- |
+| `ollama`      | LLM バックエンド (OpenAI 互換 API)                                  | 11434            |
+| `ollama-init` | 起動時に `ollama/models.txt` のモデルを pull してエイリアスを付ける | — (完了後に終了) |
+| `open-webui`  | ChatGPT 風 Web UI                                                   | 3000             |
+| `cli`         | aider ベースの Claude Code / Codex 風 CLI                           | — (対話型)       |
+
+## 使い方
+
+前提: Docker Compose v2 と [mise](https://mise.jdx.dev/)。NVIDIA GPU を使う場合は NVIDIA Container Toolkit も必要です。
+macOS の Docker Desktop からは GPU (Metal) を使えないため、Ollama は CPU で動作します。
+
+```sh
+mise trust && mise install   # 初回のみ: ツールの導入と pre-commit hook の設定
+cp .env.example .env         # 必要ならポート・既定モデル・GPU 構成 (COMPOSE_FILE) を変更
+mise run up                  # 起動。モデルの pull はバックグラウンドで進む
+mise run ui                  # ブラウザで Web UI を開く
+```
+
+モデルの pull 状況は `mise run logs` で確認できます。pull が終わったモデルから順に Web UI に現れます。
+CLI で別のプロジェクトを編集するときは `MOUNT_DIR=/path/to/project mise run code` のようにマウント先を指定します。
+
+### モデルの追加・変更
+
+`ollama/models.txt` に 1 行 `<alias> <source>` で追記し、`mise run pull` を実行します。
+alias は Ollama 上で `<alias>:latest` として登録され、Web UI と CLI から参照できます。CLI のモデルはシェルの環境変数で切り替えます (`MODEL=dolphin mise run chat`。`.env` の `DEFAULT_MODEL` は既定値、`MODEL` は `.env` では効きません)。
+pull に失敗したモデルは警告を出してスキップされ、最後に非 0 で終了します。
+
+## 開発
+
+`mise install` が `prek install` を実行し、`.pre-commit-config.yaml` の hook (dprint による整形、shellcheck、actionlint、compose ファイルの検証、タスク一覧の同期) を commit 時に走らせます。compose ファイルの検証には Docker CLI が必要です。
+手元で全ファイルを検査するには `prek run --all-files` を実行します。
+CI (`.github/workflows/ci.yaml`) は同じ hook を全ファイルに対して実行し、gitleaks でシークレットをスキャンします。
+ツールのバージョンは `mise.toml` に固定し、更新は Renovate と `mise-lock.yaml` に任せます。
 
 ## 収録モデル
 
@@ -16,16 +45,16 @@
 
 ### モデル一覧
 
-| エイリアス | ベースモデル | アーキテクチャ | コンテキスト | サイズ | 主な用途 | 推奨マシン |
-|-----------|-------------|--------------|------------|--------|---------|-----------|
-| `super-gemma:latest` | Google Gemma 4 26B | MoE (総26B / 実効4B) | 256K | ~17GB | 汎用・コーディング・reasoning | Apple Silicon 32GB+ |
-| `llama4:latest` | Meta Llama 4 Scout | MoE (総109B / 実効17B / 16 experts) | 10M | ~12GB | 汎用・マルチモーダル・ツール呼び出し | Apple Silicon / NVIDIA 16GB+ |
-| `qwen25:latest` | Alibaba Qwen 2.5 7B | Dense 7B (abliterated) | ~4K | ~5GB | 軽量汎用・デイリーユース | Apple Silicon 16GB+ / NVIDIA 8GB+ |
-| `dark-champion:latest` | Llama 3.2 3B × 8 MoE | MoE (総18.4B / 8 experts) | 128K | ~11GB | クリエイティブ執筆・フィクション・ロールプレイ | NVIDIA 16GB+ |
-| `dolphin:latest` | Llama 3.1 8B | Dense 8B (uncensored) | 128K | ~5GB | セキュリティ研究・CTF・ペネトレーション・汎用 uncensored | Apple Silicon 16GB+ / NVIDIA 8GB+ |
-| `deepseek-r1:latest` | DeepSeek R1 Distill 14B | Dense 14B (abliterated) | 128K | ~9GB | 推論チェーン × uncensored（脅威分析・ロジック問題） | Apple Silicon 32GB+ / NVIDIA 16GB+ |
-| `hermes:latest` | Nous Hermes 3 8B | Dense 8B (abliterated) | 128K | ~5GB | 医療・薬学・法律グレーゾーン・専門知識 | Apple Silicon 16GB+ / NVIDIA 8GB+ |
-| `qwen36:latest` | Alibaba Qwen 3.6 27B | Dense 27B (uncensored / aggressive) | 256K | ~18GB | 高品質汎用・長文・コーディング (アグレッシブ uncensored) | Apple Silicon 32GB+ / NVIDIA 24GB+ |
+| エイリアス             | ベースモデル            | アーキテクチャ                      | コンテキスト | サイズ | 主な用途                                                 | 推奨マシン                         |
+| ---------------------- | ----------------------- | ----------------------------------- | ------------ | ------ | -------------------------------------------------------- | ---------------------------------- |
+| `super-gemma:latest`   | Google Gemma 4 26B      | MoE (総26B / 実効4B)                | 256K         | ~17GB  | 汎用・コーディング・reasoning                            | Apple Silicon 32GB+                |
+| `llama4:latest`        | Meta Llama 4 Scout      | MoE (総109B / 実効17B / 16 experts) | 10M          | ~12GB  | 汎用・マルチモーダル・ツール呼び出し                     | Apple Silicon / NVIDIA 16GB+       |
+| `qwen25:latest`        | Alibaba Qwen 2.5 7B     | Dense 7B (abliterated)              | ~4K          | ~5GB   | 軽量汎用・デイリーユース                                 | Apple Silicon 16GB+ / NVIDIA 8GB+  |
+| `dark-champion:latest` | Llama 3.2 3B × 8 MoE    | MoE (総18.4B / 8 experts)           | 128K         | ~11GB  | クリエイティブ執筆・フィクション・ロールプレイ           | NVIDIA 16GB+                       |
+| `dolphin:latest`       | Llama 3.1 8B            | Dense 8B (uncensored)               | 128K         | ~5GB   | セキュリティ研究・CTF・ペネトレーション・汎用 uncensored | Apple Silicon 16GB+ / NVIDIA 8GB+  |
+| `deepseek-r1:latest`   | DeepSeek R1 Distill 14B | Dense 14B (abliterated)             | 128K         | ~9GB   | 推論チェーン × uncensored（脅威分析・ロジック問題）      | Apple Silicon 32GB+ / NVIDIA 16GB+ |
+| `hermes:latest`        | Nous Hermes 3 8B        | Dense 8B (abliterated)              | 128K         | ~5GB   | 医療・薬学・法律グレーゾーン・専門知識                   | Apple Silicon 16GB+ / NVIDIA 8GB+  |
+| `qwen36:latest`        | Alibaba Qwen 3.6 27B    | Dense 27B (uncensored / aggressive) | 256K         | ~18GB  | 高品質汎用・長文・コーディング (アグレッシブ uncensored) | Apple Silicon 32GB+ / NVIDIA 24GB+ |
 
 ### モデルの使い分け
 
@@ -45,30 +74,35 @@
 ### モデル詳細
 
 #### `super-gemma:latest`
+
 - **Ollamaタグ:** `0xIbra/supergemma4-26b-uncensored-gguf-v2:Q4_K_M`
 - **特徴:** Apple Silicon 向けに最適化された MLX ラインからの GGUF 変換。アンセンサード。thinking mode 対応（システムプロンプトに `<|think|>` を付与）。英語・韓国語対応。
 - **推奨マシン:** Apple Silicon 32GB 以上（VRAM 消費が大きいため）
 - **ライセンス:** Gemma 派生（非明示）
 
 #### `llama4:latest`
+
 - **Ollamaタグ:** `llama4:17b-scout-16e-instruct-q4_K_M`
 - **特徴:** Meta 公式の最新 Llama 4 Scout。唯一のマルチモーダル対応モデル（テキスト＋画像入力）。10M トークンという破格のコンテキスト長。多言語対応。リリース日: 2025-04-05。
 - **推奨マシン:** Apple Silicon 16GB+ または NVIDIA 16GB+
 - **ライセンス:** Llama 4 Community License
 
 #### `qwen25:latest`
+
 - **Ollamaタグ:** `aispin/qwen2.5-7b-instruct-abliterated-v2.q4_k_s.gguf`
 - **特徴:** Qwen 2.5 7B の abliterated 版（安全フィルター除去）。最も軽量でデイリーユースに最適。Mac / NVIDIA どちらでも問題なく動作。デフォルトモデル。
 - **推奨マシン:** Apple Silicon 16GB+ / NVIDIA 8GB+（最も要件が低い）
 - **ライセンス:** Apache 2.0
 
 #### `dark-champion:latest`
+
 - **Ollamaタグ:** `dfebrero/DavidAU-Llama-3.2-8X3B-MOE-Dark-Champion-Instruct-uncensored-abliterated-18.4B`
 - **特徴:** Llama 3.2 3B モデル 8 本を MoE 合成した 18.4B モデル。クリエイティブ執筆・フィクション・ロールプレイに特化。NSFW 出力あり。16GB VRAM カードで 50+ tokens/sec。
 - **推奨マシン:** NVIDIA 16GB+（MoE は GPU 並列処理との相性が良い）
 - **ライセンス:** Llama 3 Community License
 
 #### `dolphin:latest`
+
 - **Ollamaタグ:** `dolphin3:8b`
 - **特徴:** Eric Hartford が開発する定番 uncensored シリーズ Dolphin の最新版。安全フィルターを完全に除去した汎用モデル。Claude Code / Codex が拒否するセキュリティ関連タスク（CTF、ペネトレーションテスト、exploit の仕組み解説、PoC コード生成）に特に有用。コンテキスト 128K で長いコードや会話もこなせる。
 - **推奨マシン:** Apple Silicon 16GB+ / NVIDIA 8GB+
@@ -76,6 +110,7 @@
 - **ライセンス:** Apache 2.0
 
 #### `deepseek-r1:latest`
+
 - **Ollamaタグ:** `huihui-ai/deepseek-r1-abliterated:14b`
 - **特徴:** DeepSeek R1 Distill 14B の abliterated 版。`<think>` タグで推論チェーン（Chain of Thought）を可視化しながら回答する。安全フィルター除去により、脅威モデリング・セキュリティアーキテクチャの分析・危険なロジックを含む問題の段階的解決が可能。純粋な推論力は同サイズ最高水準。
 - **推奨マシン:** Apple Silicon 32GB+ / NVIDIA 16GB+（14B のため要求スペックが高め）
@@ -83,6 +118,7 @@
 - **ライセンス:** MIT (DeepSeek R1 Distill)
 
 #### `hermes:latest`
+
 - **Ollamaタグ:** `huihui-ai/hermes3-abliterated:8b`
 - **特徴:** Nous Research の Hermes 3 8B の abliterated 版。医療・薬学・法律など、通常の AI が免責事項で曖昧にする専門領域で直接的な回答を提供する。薬物相互作用の詳細・手術手技の解説・法律グレーゾーンの分析など。instruction following 能力が高く、プロンプト通りに動く。
 - **推奨マシン:** Apple Silicon 16GB+ / NVIDIA 8GB+
@@ -90,9 +126,78 @@
 - **ライセンス:** Apache 2.0
 
 #### `qwen36:latest`
+
 - **Ollamaタグ:** `hf.co/HauhauCS/Qwen3.6-27B-Uncensored-HauhauCS-Aggressive:Q4_K_P`
 - **特徴:** Qwen 3.6 27B Dense をベースに HauhauCS が Uncensored 化した "Aggressive" 版（拒否率を最小化し直接的に回答）。imatrix を用いた独自 K_P 量子化（Q4_K_P, 18GB）で同サイズ標準量子化より品質劣化が小さい。マルチモーダル用 mmproj も同梱（本構成ではテキストのみ）。Reddit r/LocalLLaMA で 2026-04 頃に話題化。
 - **推奨マシン:** Apple Silicon 32GB+ / NVIDIA 24GB+（Q4_K_P で約18GB の VRAM/メモリを消費）
 - **Claude Code との差分:** 27B クラスの汎用品質を保ったままセキュリティ・創作・センシティブ領域で拒否を返さない
 - **ライセンス:** Qwen Research / Tongyi Qianwen License（派生）
 - **備考:** K_P 量子化は非標準のため Ollama バージョンによっては pull に失敗することがある。失敗時は `Q4_K_M` 系を持つ別リポジトリへの差し替えを検討
+
+## タスク
+
+タスクは `mise run <task>` で実行します。`mise.toml` の `[tasks]` を変更したら `mise run docs` で以下の一覧を更新します (pre-commit hook からも自動実行されます)。
+
+<!-- dprint-ignore-start -->
+<!-- mise-tasks -->
+## `chat`
+
+- **Usage:** `chat`
+
+aider でチャットする (環境変数 MODEL にエイリアスを指定するとモデルを切り替えられる)
+
+## `code`
+
+- **Usage:** `code`
+
+MOUNT_DIR のコードを aider で編集する (環境変数 MODEL でモデルを切り替え、`--` 以降は aider に渡す)
+
+## `docs`
+
+- **Usage:** `docs`
+
+README.md のタスク一覧を mise.toml と同期する
+
+## `down`
+
+- **Usage:** `down`
+
+全サービスを停止する
+
+## `logs`
+
+- **Usage:** `logs`
+
+ログを追従表示する
+
+## `models`
+
+- **Usage:** `models`
+
+Ollama に登録済みのモデルを一覧する
+
+## `pull`
+
+- **Usage:** `pull`
+
+ollama/models.txt のモデルを pull してエイリアスを更新する
+
+## `shell`
+
+- **Usage:** `shell`
+
+aider コンテナで bash を起動する
+
+## `ui`
+
+- **Usage:** `ui`
+
+Web UI をブラウザで開く
+
+## `up`
+
+- **Usage:** `up`
+
+全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)
+<!-- /mise-tasks -->
+<!-- dprint-ignore-end -->
