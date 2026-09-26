@@ -52,7 +52,7 @@ CI (`.github/workflows/ci.yaml`) は同じ hook を全ファイルに対して�
 | `llama4:latest`        | Meta Llama 4 Scout                      | MoE (総109B / 実効17B / 16 experts) | 10M          | ~67GB  | 汎用・マルチモーダル・ツール呼び出し                     | Apple Silicon 96GB+ / NVIDIA 80GB+ |
 | `qwen35:latest`        | Alibaba Qwen3.5 9B                      | Dense 9B (abliterated)              | 256K         | ~7GB   | 軽量汎用・デイリーユース・画像入力                       | Apple Silicon 16GB+ / NVIDIA 12GB+ |
 | `dark-champion:latest` | Llama 3.2 4B × 8 MoE (Dark Champion V2) | MoE (総21B / 8 experts)             | 128K         | ~13GB  | クリエイティブ執筆・フィクション・ロールプレイ           | Apple Silicon 32GB+ / NVIDIA 16GB+ |
-| `dolphin:latest`       | Dolphin Mistral 24B Venice Edition      | Dense 24B (uncensored)              | 128K         | ~14GB  | セキュリティ研究・CTF・ペネトレーション・汎用 uncensored | Apple Silicon 32GB+ / NVIDIA 16GB+ |
+| `dolphin:latest`       | Dolphin Mistral 24B Venice Edition      | Dense 24B (uncensored)              | 32K          | ~14GB  | セキュリティ研究・CTF・ペネトレーション・汎用 uncensored | Apple Silicon 32GB+ / NVIDIA 16GB+ |
 | `deepseek-r1:latest`   | DeepSeek R1-0528 Qwen3 8B 蒸留          | Dense 8B (abliterated)              | 128K         | ~5GB   | 推論チェーン × uncensored（脅威分析・ロジック問題）      | Apple Silicon 16GB+ / NVIDIA 8GB+  |
 | `hermes:latest`        | Nous Hermes 4.3 36B                     | Dense 36B (低拒否率設計)            | 512K         | ~22GB  | 医療・薬学・法律グレーゾーン・専門知識                   | Apple Silicon 48GB+ / NVIDIA 24GB+ |
 | `qwen38:latest`        | Alibaba Qwen3.8 27B                     | Dense 27B (uncensored / aggressive) | 256K         | ~18GB  | 高品質汎用・長文・コーディング (アグレッシブ uncensored) | Apple Silicon 32GB+ / NVIDIA 24GB+ |
@@ -107,7 +107,7 @@ CI (`.github/workflows/ci.yaml`) は同じ hook を全ファイルに対して�
 #### `dolphin:latest`
 
 - **Ollamaタグ:** `hf.co/bartowski/cognitivecomputations_Dolphin-Mistral-24B-Venice-Edition-GGUF:Q4_K_M`
-- **特徴:** Eric Hartford (cognitivecomputations) が Venice.ai と共同で公開した Dolphin シリーズの最新版。Mistral Small 24B ベースで、Dolphin 3 8B より大幅に高性能。安全フィルターを除去した汎用モデルで、Claude Code / Codex が拒否するセキュリティ関連タスク（CTF、ペネトレーションテスト、exploit の仕組み解説、PoC コード生成）に特に有用。
+- **特徴:** Eric Hartford (cognitivecomputations) が Venice.ai と共同で公開した Dolphin シリーズの最新版。Mistral Small 24B ベースで、Dolphin 3 8B より大幅に高性能。安全フィルターを除去した汎用モデルで、Claude Code / Codex が拒否するセキュリティ関連タスク（CTF、ペネトレーションテスト、exploit の仕組み解説、PoC コード生成）に特に有用。コンテキストは GGUF の設定値どおり 32K（Dolphin 3 8B の 128K より短い）。
 - **推奨マシン:** Apple Silicon 32GB 以上 / NVIDIA 16GB 以上
 - **Claude Code との差分:** exploit コード生成・マルウェア解析・ソーシャルエンジニアリング手法の説明など Claude が拒否するタスクを実行可能
 - **ライセンス:** Apache 2.0
@@ -132,7 +132,7 @@ CI (`.github/workflows/ci.yaml`) は同じ hook を全ファイルに対して�
 #### `qwen38:latest`
 
 - **Ollamaタグ:** `hf.co/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF:Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf`
-- **特徴:** Qwen3.8 27B をベースに HauhauCS が Uncensored 化した "Aggressive" 版（拒否率を最小化し直接的に回答）の最新世代。imatrix を用いた独自 K_P 量子化（Q4_K_P, 18GB）で同サイズ標準量子化より品質劣化が小さい。GGUF に multi-token prediction (MTP) 用のヘッドを同梱。マルチモーダル用 mmproj も同梱（本構成ではテキストのみ）。
+- **特徴:** Qwen3.8 27B をベースに HauhauCS が Uncensored 化した "Aggressive" 版（拒否率を最小化し直接的に回答）の最新世代。imatrix を用いた独自 K_P 量子化（Q4_K_P, 18GB）で同サイズ標準量子化より品質劣化が小さい。GGUF に multi-token prediction (MTP) 用のヘッドを同梱。画像入力用の projector (mmproj) も一緒に pull されるが、画像入力の動作は未検証。
 - **推奨マシン:** Apple Silicon 32GB 以上 / NVIDIA 24GB 以上
 - **Claude Code との差分:** 27B クラスの汎用品質を保ったままセキュリティ・創作・センシティブ領域で拒否を返さない
 - **ライセンス:** Apache 2.0
