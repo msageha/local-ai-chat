@@ -2,9 +2,9 @@ x-ollama-url: &ollama-url http://ollama:11434
 
 services:
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.34.4
     ports:
-      - "${OLLAMA_PORT:-11434}:11434"
+      - "${BIND_HOST:-127.0.0.1}:${OLLAMA_PORT:-11434}:11434"
     volumes:
       - ./data/ollama:/root/.ollama
     environment:
@@ -21,7 +21,7 @@ services:
   # ollama/models.txt のモデルを pull してエイリアスを付ける。起動ごとに再実行され、
   # 失敗したモデルがあると非 0 で終了する。Web UI はこの完了を待たない
   ollama-init:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.34.4 # ollama と同じバージョンにする
     depends_on:
       ollama:
         condition: service_healthy
@@ -32,12 +32,12 @@ services:
     entrypoint: ["sh", "/config/pull-models.sh", "/config/models.txt"]
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:v0.11.4
     depends_on:
       ollama:
         condition: service_healthy
     ports:
-      - "${WEBUI_PORT:-3000}:8080"
+      - "${BIND_HOST:-127.0.0.1}:${WEBUI_PORT:-3000}:8080"
     volumes:
       - ./data/open-webui:/app/backend/data
     environment:
@@ -46,12 +46,12 @@ services:
       # 未設定なら初回起動時に自動生成され、データボリューム内のこのファイルに保存される
       WEBUI_SECRET_KEY: "${WEBUI_SECRET_KEY:-}"
       WEBUI_SECRET_KEY_FILE: /app/backend/data/.webui_secret_key
-      DEFAULT_MODELS: "${DEFAULT_MODEL:-qwen25:latest}"
+      DEFAULT_MODELS: "${DEFAULT_MODEL:-qwen35:latest}"
     restart: unless-stopped
 
   # aider。`mise run chat` / `mise run code` / `mise run shell` から使う
   cli:
-    image: paulgauthier/aider:latest
+    image: paulgauthier/aider:v0.86.2
     profiles: [cli]
     depends_on:
       ollama:
@@ -61,6 +61,6 @@ services:
     working_dir: /app
     environment:
       OLLAMA_API_BASE: *ollama-url
-      AIDER_MODEL: "ollama_chat/${DEFAULT_MODEL:-qwen25:latest}"
+      AIDER_MODEL: "ollama_chat/${DEFAULT_MODEL:-qwen35:latest}"
     stdin_open: true
     tty: true

@@ -40,17 +40,18 @@ run = "docker compose exec ollama ollama list"
 description = "ollama/models.txt のモデルを pull してエイリアスを更新する"
 run = "docker compose run --rm ollama-init"
 
+# cli はホストの UID/GID で実行し、マウント先に作るファイルの所有者をホストユーザーに揃える
 [tasks.chat]
 description = "aider でチャットする (環境変数 MODEL にエイリアスを指定するとモデルを切り替えられる)"
-run = "docker compose run --rm ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-git --map-tokens 0"
+run = "docker compose run --rm --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-git --map-tokens 0"
 
 [tasks.code]
 description = "MOUNT_DIR のコードを aider で編集する (環境変数 MODEL でモデルを切り替え、`--` 以降は aider に渡す)"
-run = "docker compose run --rm ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-auto-commits --no-dirty-commits"
+run = "docker compose run --rm --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-auto-commits --no-dirty-commits"
 
 [tasks.shell]
 description = "aider コンテナで bash を起動する"
-run = "docker compose run --rm --entrypoint bash cli"
+run = "docker compose run --rm --user \"$(id -u):$(id -g)\" --entrypoint bash cli"
 
 [tasks.docs]
 description = "README.md のタスク一覧を mise.toml と同期する"
