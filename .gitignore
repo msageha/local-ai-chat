@@ -1,10 +1,28 @@
-# Deny all by default
+# ホワイトリスト方式: すべて無視し、`!` で許可したものだけを追跡する
 *
 
-# Project root files
-!.gitignore
-!Makefile
-!README.md
-!docker-compose.yaml
-!docker-compose.gpu.yaml
+!/.github/
+!/.github/**/
+!/ollama/
 
+!/.gitignore
+!/.gitattributes
+!/.env.example
+!/README.md
+!/compose.yaml
+!/compose.gpu.yaml
+!/ollama/models.txt
+!/ollama/pull-models.sh
+!/mise.toml
+!/mise.lock
+!/.pre-commit-config.yaml
+!/dprint.json
+!/renovate.json
+!/.github/CODEOWNERS
+!/.github/PULL_REQUEST_TEMPLATE.md
+!/.github/ISSUE_TEMPLATE/bug_report.md
+!/.github/ISSUE_TEMPLATE/feature_request.md
+!/.github/workflows/ci.yaml
+!/.github/workflows/prek.yaml
+!/.github/workflows/gitleaks.yaml
+!/.github/workflows/mise-lock.yaml

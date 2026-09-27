@@ -1,0 +1,58 @@
+# ツールのバージョンは Renovate (mise manager) が bump する。latest 指定にしない。
+# checksum の再解決は mise-lock.yaml (週次) が行う。
+[tools]
+prek = "0.5.3"
+actionlint = "1.7.12"
+dprint = "0.57.4"
+shellcheck = "0.11.0"
+
+[hooks]
+postinstall = "prek install"
+
+[settings]
+lockfile = true
+
+[tasks.up]
+description = "全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)"
+run = "docker compose up -d"
+
+[tasks.down]
+description = "全サービスを停止する"
+run = "docker compose down"
+
+[tasks.logs]
+description = "ログを追従表示する"
+run = "docker compose logs -f"
+
+[tasks.ui]
+description = "Web UI をブラウザで開く"
+run = '''
+port=$(docker compose port open-webui 8080) || { echo "open-webui is not running; run 'mise run up' first" >&2; exit 1; }
+url="http://localhost:${port##*:}"
+open "$url" 2>/dev/null || xdg-open "$url" 2>/dev/null || echo "$url"
+'''
+
+[tasks.models]
+description = "Ollama に登録済みのモデルを一覧する"
+run = "docker compose exec ollama ollama list"
+
+[tasks.pull]
+description = "ollama/models.txt のモデルを pull してエイリアスを更新する"
+run = "docker compose run --rm ollama-init"
+
+# cli はホストの UID/GID で実行し、マウント先に作るファイルの所有者をホストユーザーに揃える
+[tasks.chat]
+description = "aider でチャットする (環境変数 MODEL にエイリアスを指定するとモデルを切り替えられる)"
+run = "docker compose run --rm --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-git --map-tokens 0"
+
+[tasks.code]
+description = "MOUNT_DIR のコードを aider で編集する (環境変数 MODEL でモデルを切り替え、`--` 以降は aider に渡す)"
+run = "docker compose run --rm --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-auto-commits --no-dirty-commits"
+
+[tasks.shell]
+description = "aider コンテナで bash を起動する"
+run = "docker compose run --rm --user \"$(id -u):$(id -g)\" --entrypoint bash cli"
+
+[tasks.docs]
+description = "README.md のタスク一覧を mise.toml と同期する"
+run = "mise generate task-docs --inject --output README.md"
