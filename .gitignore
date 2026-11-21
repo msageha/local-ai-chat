@@ -27,6 +27,10 @@
 !/compose.gpu.yaml
 !/mise.toml
 !/mise.lock
+# npm の backend のツールの依存関係の lock。mise lock が mise.lock と合わせて書き出す
+!/.mise/
+!/.mise/locks/
+!/.mise/locks/**
 !/.pre-commit-config.yaml
 !/.dclintrc
 !/commitlint.config.mjs
