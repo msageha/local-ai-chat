@@ -43,8 +43,7 @@ repos:
         name: Validate compose files
         language: system
         # GPU と Apple Silicon の override は別の構成なので、それぞれ compose.yaml に重ねて検査する
-        # mise exec: CI と同じく mise.toml の [env] (COMPOSE_DISABLE_ENV_FILE) を効かせ、手元の .env を読ませない
-        entry: mise exec -- sh -c 'docker compose -f compose.yaml -f compose.gpu.yaml config --quiet && docker compose -f compose.yaml -f compose.apple.yaml config --quiet'
+        entry: sh -c 'docker compose -f compose.yaml -f compose.gpu.yaml config --quiet && docker compose -f compose.yaml -f compose.apple.yaml config --quiet'
         files: ^compose(\.gpu|\.apple)?\.yaml$
         pass_filenames: false
       - id: ollama-versions

@@ -26,13 +26,10 @@ lockfile = true
 
 # compose に渡す設定。未設定の項目は compose.yaml の既定値が使われる。
 # 変えるときは行のコメントを外す。手元だけの値と secret は、git 管理外の mise.local.toml の [env] に書く。
-# [env] の値はシェルの環境変数より優先されるので、ここに書いた変数は `MOUNT_DIR=... mise run code` のようには上書きできない
+# [env] の値はシェルの環境変数より優先されるので、実行ごとにシェルから渡す変数 (MODEL・MOUNT_DIR) はここに書かない
 [env]
-# compose が自動で読むリポジトリ直下の .env を読ませず、設定の置き場を mise に揃える
-COMPOSE_DISABLE_ENV_FILE = "true"
 # NVIDIA GPU を使うなら compose.gpu.yaml を、Apple Silicon の Mac で Ollama をホストで動かすなら compose.apple.yaml を重ねる
-# (README の「Apple Silicon の構成」を参照)。区切り文字は OS 依存なので、COMPOSE_FILE と一緒に明示する
-# COMPOSE_PATH_SEPARATOR = ":"
+# (README の「Apple Silicon の構成」を参照)
 # COMPOSE_FILE = "compose.yaml:compose.gpu.yaml"
 # COMPOSE_FILE = "compose.yaml:compose.apple.yaml"
 # ポートを bind するホスト側アドレス。同じネットワークに公開するなら 0.0.0.0
@@ -46,8 +43,6 @@ COMPOSE_DISABLE_ENV_FILE = "true"
 # Web UI と aider の既定モデル。ollama/models.txt のエイリアスをタグ付きで指定する。
 # Web UI 側は初回起動時にだけ読み込まれ、以後は管理画面の設定が優先される
 # DEFAULT_MODEL = "qwen35-4b-heretic:latest"
-# `mise run code` で aider に /app としてマウントするホスト側ディレクトリ (compose.yaml からの相対パスも可)
-# MOUNT_DIR = "."
 
 [tasks.up]
 description = "全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)"
@@ -62,9 +57,9 @@ if [[ $(uname -sm) != "Darwin arm64" ]]; then
   echo "serve runs Ollama on the host and needs macOS on Apple Silicon" >&2
   exit 1
 fi
-# bind 先・ポート・Ollama の設定は compose が環境変数 (mise の [env] を含む) から決めた値を使い、コンテナで動かすときと揃える
 # [env] に書いた secret を、長く動き続けるホストの Ollama に引き継がせない
 unset WEBUI_SECRET_KEY
+# bind 先・ポート・Ollama の設定は compose が決めた値を使い、コンテナで動かすときと揃える
 config=$(docker compose config --format json)
 if ! jq -e '.services["ollama-init"].environment.PULL_MLX_MODELS == "1"' <<<"$config" >/dev/null; then
   echo "set COMPOSE_FILE to compose.yaml:compose.apple.yaml in the [env] of mise.toml or mise.local.toml so the services connect to the host Ollama" >&2

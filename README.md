@@ -13,7 +13,7 @@
 
 ## 使い方
 
-前提: Docker Compose v2.24.0 以降 (`.env` を読ませない `COMPOSE_DISABLE_ENV_FILE` に対応した版) と [mise](https://mise.jdx.dev/)。NVIDIA GPU を使う場合は NVIDIA Container Toolkit も必要です。
+前提: Docker Compose v2 と [mise](https://mise.jdx.dev/)。NVIDIA GPU を使う場合は NVIDIA Container Toolkit も必要です。
 macOS の Docker のコンテナからは GPU (Metal) を使えないため、Apple Silicon の Mac では「[Apple Silicon の構成](#apple-silicon-の構成)」で Ollama をホストで動かすと GPU を使えます。
 
 ```sh
@@ -23,10 +23,10 @@ mise run ui                  # ブラウザで Web UI を開く
 ```
 
 モデルの pull 状況は `mise run logs` で確認できます。pull が終わったモデルから順に Web UI に現れます。
-ポート・既定モデル・GPU 構成 (`COMPOSE_FILE`) などの設定は `mise.toml` の `[env]` に一覧があり、コメントを外すと変えられます。手元だけの値と secret (`WEBUI_SECRET_KEY`) は、git 管理外の `mise.local.toml` の `[env]` に書きます。`.env` は読みません (mise が `COMPOSE_DISABLE_ENV_FILE` を設定するため。mise を使わずに `docker compose` を実行すると、Compose は `.env` を読みます)。
-以前 `.env` で設定を変えていた場合は、次に `mise run up` する前に、その値を `mise.local.toml` の `[env]` に移してから `.env` を消してください。移さないと既定値で起動し、たとえば `WEBUI_AUTH=true` でユーザーを登録していた環境ではログインできなくなり、`WEBUI_SECRET_KEY` を設定していた環境では鍵が変わってログイン中のセッションが無効になります。
+ポート・既定モデル・GPU 構成 (`COMPOSE_FILE`) などの設定は `mise.toml` の `[env]` に一覧があり、コメントを外すと変えられます。手元だけの値と secret (`WEBUI_SECRET_KEY`) は、git 管理外の `mise.local.toml` の `[env]` に書きます。
+以前 `.env` で設定を変えていた場合は、その値を `mise.local.toml` の `[env]` に移して `.env` を消してください。Compose は残った `.env` も読むので、設定の置き場が 2 つに分かれます。
 既定ではポートを `127.0.0.1` にのみ bind します。同じネットワークの他の端末から使うなら `[env]` で `BIND_HOST = "0.0.0.0"` を設定してください。
-CLI で別のプロジェクトを編集するときは `MOUNT_DIR=/path/to/project mise run code` のようにマウント先を指定します (`[env]` に `MOUNT_DIR` を書くと、mise の値がシェルの値より優先されるので、この指定は効きません)。
+CLI で別のプロジェクトを編集するときは `MOUNT_DIR=/path/to/project mise run code` のようにマウント先を指定します。
 
 ### Apple Silicon の構成
 
@@ -40,7 +40,7 @@ Apple Silicon の Mac では、Ollama をコンテナではなくホストで動
 - `[env]` の `BIND_HOST` が `127.0.0.1` か `0.0.0.0` (ホストの Ollama もここで待ち受け、コンテナからはホストの loopback 経由で接続するため)
 - Ollama.app など、ほかの Ollama が `OLLAMA_PORT` (既定 11434) で動いていないこと (動いていると、その Ollama に接続してしまう)
 
-通常の構成から切り替えるときは、`mise run down` で止めてから `mise.toml` か `mise.local.toml` の `[env]` で `COMPOSE_FILE = "compose.yaml:compose.apple.yaml"` と `COMPOSE_PATH_SEPARATOR = ":"` を設定し、ホストの Ollama が待ち受けを始めたのを確かめてから全体を起動します。
+通常の構成から切り替えるときは、`mise run down` で止めてから `mise.toml` か `mise.local.toml` の `[env]` で `COMPOSE_FILE = "compose.yaml:compose.apple.yaml"` を設定し、ホストの Ollama が待ち受けを始めたのを確かめてから全体を起動します。
 
 ```sh
 mise run serve              # ホストの Ollama を起動する (このターミナルで動き続ける。"Listening on" と出れば起動済み)
