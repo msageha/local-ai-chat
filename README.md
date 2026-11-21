@@ -13,19 +13,20 @@
 
 ## 使い方
 
-前提: Docker Compose v2 と [mise](https://mise.jdx.dev/)。NVIDIA GPU を使う場合は NVIDIA Container Toolkit も必要です。
+前提: Docker Compose v2.24.0 以降 (`.env` を読ませない `COMPOSE_DISABLE_ENV_FILE` に対応した版) と [mise](https://mise.jdx.dev/)。NVIDIA GPU を使う場合は NVIDIA Container Toolkit も必要です。
 macOS の Docker のコンテナからは GPU (Metal) を使えないため、Apple Silicon の Mac では「[Apple Silicon の構成](#apple-silicon-の構成)」で Ollama をホストで動かすと GPU を使えます。
 
 ```sh
 mise trust && mise install   # 初回のみ: ツールの導入と pre-commit hook の設定
-cp .env.example .env         # 必要ならポート・既定モデル・GPU 構成 (COMPOSE_FILE) を変更
 mise run up                  # 起動。モデルの pull はバックグラウンドで進む (全モデルで約 360GB。「収録モデル」を参照)
 mise run ui                  # ブラウザで Web UI を開く
 ```
 
 モデルの pull 状況は `mise run logs` で確認できます。pull が終わったモデルから順に Web UI に現れます。
-既定ではポートを `127.0.0.1` にのみ bind します。同じネットワークの他の端末から使うなら `.env` で `BIND_HOST=0.0.0.0` を設定してください。
-CLI で別のプロジェクトを編集するときは `MOUNT_DIR=/path/to/project mise run code` のようにマウント先を指定します。
+ポート・既定モデル・GPU 構成 (`COMPOSE_FILE`) などの設定は `mise.toml` の `[env]` に一覧があり、コメントを外すと変えられます。手元だけの値と secret (`WEBUI_SECRET_KEY`) は、git 管理外の `mise.local.toml` の `[env]` に書きます。`.env` は読みません (mise が `COMPOSE_DISABLE_ENV_FILE` を設定するため。mise を使わずに `docker compose` を実行すると、Compose は `.env` を読みます)。
+以前 `.env` で設定を変えていた場合は、次に `mise run up` する前に、その値を `mise.local.toml` の `[env]` に移してから `.env` を消してください。移さないと既定値で起動し、たとえば `WEBUI_AUTH=true` でユーザーを登録していた環境ではログインできなくなり、`WEBUI_SECRET_KEY` を設定していた環境では鍵が変わってログイン中のセッションが無効になります。
+既定ではポートを `127.0.0.1` にのみ bind します。同じネットワークの他の端末から使うなら `[env]` で `BIND_HOST = "0.0.0.0"` を設定してください。
+CLI で別のプロジェクトを編集するときは `MOUNT_DIR=/path/to/project mise run code` のようにマウント先を指定します (`[env]` に `MOUNT_DIR` を書くと、mise の値がシェルの値より優先されるので、この指定は効きません)。
 
 ### Apple Silicon の構成
 
@@ -36,17 +37,17 @@ Apple Silicon の Mac では、Ollama をコンテナではなくホストで動
 - macOS 14 以降 (ホストの Ollama の要件)
 - compose ファイルの `!reset` タグに対応した Docker Compose
 - コンテナから `host.docker.internal` でホストに届く Docker (Docker Desktop・OrbStack)
-- `.env` の `BIND_HOST` が `127.0.0.1` か `0.0.0.0` (ホストの Ollama もここで待ち受け、コンテナからはホストの loopback 経由で接続するため)
+- `[env]` の `BIND_HOST` が `127.0.0.1` か `0.0.0.0` (ホストの Ollama もここで待ち受け、コンテナからはホストの loopback 経由で接続するため)
 - Ollama.app など、ほかの Ollama が `OLLAMA_PORT` (既定 11434) で動いていないこと (動いていると、その Ollama に接続してしまう)
 
-通常の構成から切り替えるときは、`mise run down` で止めてから `.env` で `COMPOSE_FILE=compose.yaml:compose.apple.yaml` を設定し、ホストの Ollama が待ち受けを始めたのを確かめてから全体を起動します。
+通常の構成から切り替えるときは、`mise run down` で止めてから `mise.toml` か `mise.local.toml` の `[env]` で `COMPOSE_FILE = "compose.yaml:compose.apple.yaml"` と `COMPOSE_PATH_SEPARATOR = ":"` を設定し、ホストの Ollama が待ち受けを始めたのを確かめてから全体を起動します。
 
 ```sh
 mise run serve              # ホストの Ollama を起動する (このターミナルで動き続ける。"Listening on" と出れば起動済み)
 mise run up                 # 別のターミナルで起動。以降の操作は通常と同じ
 ```
 
-止めるときは `mise run down` でコンテナを止め、`mise run serve` のターミナルで Ctrl-C を押します。通常の構成に戻すときは、両方を止めてから `.env` の `COMPOSE_FILE` を戻します。
+止めるときは `mise run down` でコンテナを止め、`mise run serve` のターミナルで Ctrl-C を押します。通常の構成に戻すときは、両方を止めてから `[env]` の `COMPOSE_FILE` を戻します。
 
 ホストの Ollama は `mise install` が入れる版 (コンテナのイメージと同じ版) で、モデルはコンテナのときと同じ `data/ollama/models` に、ollama.com の認証鍵は `data/ollama/home` に置きます (ホストのユーザーのサインイン状態は使わない)。`ollama` サービスはホストの Ollama へ (`host.docker.internal` 経由で) 転送するプロキシになるので、Web UI・CLI・モデルの pull の接続先は通常の構成と変わりません。
 この構成以外では、`mlx` を付けたモデルは pull せずに飛ばします。ただし、この構成で pull した後に同じ Mac で通常の構成へ戻すと、登録は残って選択肢に出ますが動きません。使わないなら `ollama rm <alias> <source>` (例: `docker compose exec ollama ollama rm inkling2-mini inkling-2-mini:26b-a5b-nvfp4`) で消してください。
@@ -59,7 +60,7 @@ tag は単体の manifest を返すものに限ります。また、`registry.ol
 digest は manifest の sha256 で、`mise run models` が表示する ID はその先頭 12 文字です。
 Ollama は digest を指定して pull できないため、tag で pull した後に digest を照合し、一致したときだけ alias を更新します。
 tag の内容が上流で更新されると、Renovate が digest を更新するまで (「[依存関係の更新](#依存関係の更新)」) そのモデルは digest 不一致で失敗し、alias は前の版のまま残ります。
-alias は Ollama 上で `<alias>:latest` として登録され、Web UI と CLI から参照できます。CLI のモデルはシェルの環境変数で切り替えます (`MODEL=goetia mise run chat`。`.env` の `DEFAULT_MODEL` は既定値、`MODEL` は `.env` では効きません)。
+alias は Ollama 上で `<alias>:latest` として登録され、Web UI と CLI から参照できます。CLI のモデルはシェルの環境変数で切り替えます (`MODEL=goetia mise run chat`。`[env]` の `DEFAULT_MODEL` は既定値です)。
 pull や照合に失敗したモデルは警告を出してスキップされ、最後に非 0 で終了します。
 
 ## 開発

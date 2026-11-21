@@ -22,7 +22,6 @@
 !/.gitignore
 !/.gitattributes
 !/.editorconfig
-!/.env.example
 !/README.md
 !/compose.yaml
 !/compose.gpu.yaml
