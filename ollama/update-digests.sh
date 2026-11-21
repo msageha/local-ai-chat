@@ -13,17 +13,18 @@ failed=""
 
 while IFS= read -r line || [[ -n $line ]]; do
   read -r alias source digest rest <<<"$line" || true
+  if [[ -z ${alias:-} || $alias == '#'* ]]; then
+    printf '%s\n' "$line"
+    continue
+  fi
   # digest の無い行では、3 列目は後ろの列 (要件) なので、digest として扱わない
   if [[ ${digest:-} != sha256:* ]]; then
     rest="${digest:-}${rest:+ $rest}"
     digest=""
   fi
-  if [[ -z ${alias:-} || $alias == '#'* ]]; then
-    printf '%s\n' "$line"
-    continue
-  fi
   name=${source%:*}
-  if [[ -z ${source:-} || $name == "$source" || $name != */*/* ]]; then
+  # pull-models.sh が受け付ける形と同じ
+  if [[ ! ${source:-} =~ ^[A-Za-z0-9.-]+\.[A-Za-z]+(:[0-9]+)?/[^/:]+/[^/:]+:[^/:]+$ ]]; then
     echo "ERROR: source must be '<host>/<namespace>/<model>:<tag>': $line" >&2
     exit 1
   fi

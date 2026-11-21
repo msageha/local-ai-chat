@@ -5,7 +5,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 # ollama と ollama-init の両方の行から、digest 付きの版を読めたことを確かめる (読めない行があると比較から漏れるため)
-image_lines=$(grep -c 'image: ollama/ollama:' compose.yaml || true)
+image_lines=$(grep -c -E 'image: ollama/ollama([:@]|$)' compose.yaml || true)
 pinned=$(sed -n -E 's#^[[:space:]]*image: ollama/ollama:([^@[:space:]]+)@sha256:[0-9a-f]{64}.*#\1#p' compose.yaml)
 image_versions=$(sort -u <<<"$pinned")
 mise_version=$(sed -n -E 's/^ollama = \{ version = "([^"]+)".*/\1/p' mise.toml)

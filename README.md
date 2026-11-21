@@ -55,7 +55,7 @@ mise run up                 # 別のターミナルで起動。以降の操作�
 
 `ollama/models.txt` に 1 行 `<alias> <source>` (Ollama の library に MLX 形式の tag しか無いモデルは `<alias> <source> mlx`) で追記し、`mise run digests` で digest を書き込んでから `mise run pull` を実行します。
 source は `registry.ollama.ai/<namespace>/<model>:<tag>` (公式モデルの namespace は `library`) か `hf.co/<user>/<repo>:<tag>` の形で書きます。
-tag は単体の manifest を返すものに限ります。また、`registry.ollama.ai/library/<model>:latest` は alias (`<alias>:latest`) と同じ名前空間に入って alias を上書きしうるので、`latest` 以外の tag を指定します。digest の照合は単体の manifest を前提にしているので、manifest list (複数の版を束ねた一覧) を返す tag は扱えません。
+tag は単体の manifest を返すものに限ります。また、`registry.ollama.ai/library/<model>:latest` (`ollama.com/library/` も同じ) は alias (`<alias>:latest`) と同じ名前空間に入って alias を上書きしうるので、`latest` 以外の tag を指定します。digest の照合は単体の manifest を前提にしているので、manifest list (複数の版を束ねた一覧) を返す tag は扱えません。
 digest は manifest の sha256 で、`mise run models` が表示する ID はその先頭 12 文字です。
 Ollama は digest を指定して pull できないため、tag で pull した後に digest を照合し、一致したときだけ alias を更新します。
 tag の内容が上流で更新されると、Renovate が digest を更新するまで (「[依存関係の更新](#依存関係の更新)」) そのモデルは digest 不一致で失敗し、alias は前の版のまま残ります。

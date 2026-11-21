@@ -17,20 +17,6 @@ failed=""
 
 while read -r alias source digest requires _ || [ -n "$alias" ]; do
   case $alias in '' | '#'*) continue ;; esac
-  case ${requires:-} in
-  '') ;;
-  mlx)
-    if [ "${PULL_MLX_MODELS:-}" != 1 ]; then
-      echo "skipped: $alias (requires Ollama with MLX on Apple Silicon)"
-      continue
-    fi
-    ;;
-  *)
-    echo "WARNING: unknown requirement '$requires': $alias" >&2
-    failed="$failed $alias"
-    continue
-    ;;
-  esac
   if ! printf '%s\n' "$digest" | grep -qx 'sha256:[0-9a-f]\{64\}'; then
     echo "WARNING: skipping malformed line (expected '<alias> <source> sha256:<64 hex> [mlx]'): $alias" >&2
     failed="$failed $alias"
@@ -47,6 +33,21 @@ while read -r alias source digest requires _ || [ -n "$alias" ]; do
   # この形の source は照合の前の pull でいずれかの alias を上書きしうる。Ollama は名前の大文字小文字を区別しない
   case $(printf '%s' "$source" | tr '[:upper:]' '[:lower:]') in registry.ollama.ai/library/*:latest | ollama.com/library/*:latest)
     echo "WARNING: source must not be <registry.ollama.ai|ollama.com>/library/<model>:latest: $alias ($source)" >&2
+    failed="$failed $alias"
+    continue
+    ;;
+  esac
+  # 飛ばす行も上の形式の検査は通し、どの構成で起動しても models.txt の誤りを報告する
+  case $requires in
+  '') ;;
+  mlx)
+    if [ "${PULL_MLX_MODELS:-}" != 1 ]; then
+      echo "skipped: $alias (requires Ollama with MLX on Apple Silicon)"
+      continue
+    fi
+    ;;
+  *)
+    echo "WARNING: unknown requirement '$requires': $alias" >&2
     failed="$failed $alias"
     continue
     ;;
