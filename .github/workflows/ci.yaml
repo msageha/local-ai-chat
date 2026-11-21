@@ -1,35 +1,48 @@
 name: CI
 
 on:
-  # push トリガーは置かない: merge 後の main での再実行は PR で検証済みのため不要
-  # (secret scan の main 全履歴は gitleaks.yaml の週次 schedule が再スキャンする)。
-  # デフォルト types の明示: closed 等 CI が不要な PR イベントでは走らせない
+  # main への変更は PR 経由で入れ、その PR で検証するため push トリガーは置かない
   pull_request:
     types: [opened, synchronize, reopened]
-  # mise-lock.yaml が GITHUB_TOKEN で push / 作成する PR には workflow run が自動発火しないため、
-  # PR head ブランチへ明示的に dispatch できるようにする
-  workflow_dispatch:
 
 permissions:
   contents: read
-  # fail-fast: 失敗した job が run 全体をキャンセルする (他の並列チェックを止める) のに必要
-  actions: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# 各チェックは reusable workflow として並列実行し、1 つでも失敗したら
-# その時点で run 全体をキャンセルする (fail-fast)。
-# チェックを追加するときはここに job を足し、呼び出される側は
-# workflow_call + fail-fast input を持つ reusable workflow として実装する。
+# job 名がそのまま required status check の名前になるため、変えるときは ruleset の設定も合わせる
 jobs:
   prek:
-    uses: ./.github/workflows/prek.yaml
-    with:
-      fail-fast: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # mise.lock があると `mise install --locked` になり、mise.toml と食い違えばここで失敗する
+      - name: Install mise
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+
+      - name: Run prek
+        run: mise exec -- prek run --all-files
 
   gitleaks:
-    uses: ./.github/workflows/gitleaks.yaml
-    with:
-      fail-fast: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # gitleaks で全履歴をスキャンするため
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install mise
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+
+      - name: Run gitleaks
+        run: mise exec -- gitleaks git --redact -v .

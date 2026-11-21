@@ -1,9 +1,13 @@
-# ツールのバージョンは Renovate (mise manager) が bump する。latest 指定にしない。
-# checksum の再解決は mise-lock.yaml (週次) が行う。
+# exact version で pin し、latest にしない (Renovate が mise.lock と合わせて更新する)。
+# 手で変えたら `mise lock` で mise.lock を追従させる。
 [tools]
-prek = "0.5.3"
+prek = "0.5.9"
 actionlint = "1.7.12"
-dprint = "0.57.4"
+dprint = "0.64.3"
+gitleaks = "8.30.1"
+# ollama/update-digests.sh が manifest を検証するのに使う
+jq = "1.8.2"
+# actionlint は PATH に shellcheck があるときだけ run: を検査するため、ローカルと CI で揃えて pin する
 shellcheck = "0.11.0"
 
 [hooks]
@@ -40,6 +44,10 @@ run = "docker compose exec ollama ollama list"
 description = "ollama/models.txt のモデルを pull してエイリアスを更新する"
 run = "docker compose run --rm ollama-init"
 
+[tasks.digests]
+description = "ollama/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)"
+run = "ollama/update-digests.sh"
+
 # cli はホストの UID/GID で実行し、マウント先に作るファイルの所有者をホストユーザーに揃える
 [tasks.chat]
 description = "aider でチャットする (環境変数 MODEL にエイリアスを指定するとモデルを切り替えられる)"
@@ -56,3 +64,40 @@ run = "docker compose run --rm --user \"$(id -u):$(id -g)\" --entrypoint bash cl
 [tasks.docs]
 description = "README.md のタスク一覧を mise.toml と同期する"
 run = "mise generate task-docs --inject --output README.md"
+
+# README.md / CODEOWNERS / CLAUDE.md / mise.lock はリポジトリごとに書き換えるので比較しない
+[tasks.template-diff]
+description = "共通ファイルを dope-corp/template の main と比較する"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+repo="dope-corp/template"
+files=(
+  .editorconfig .gitattributes .gitignore .pre-commit-config.yaml commitlint.config.mjs
+  dprint.json mise.toml renovate.json
+  .github/PULL_REQUEST_TEMPLATE.md
+  .github/ISSUE_TEMPLATE/config.yml .github/ISSUE_TEMPLATE/bug_report.yaml .github/ISSUE_TEMPLATE/feature_request.yaml
+  .github/workflows/ci.yaml .github/workflows/claude.yaml .github/workflows/claude-sweep.yaml
+)
+err="$(mktemp)"
+trap 'rm -f "${err}"' EXIT
+failed=0
+for f in "${files[@]}"; do
+  if ! upstream="$(gh api "repos/${repo}/contents/${f}" -H 'Accept: application/vnd.github.raw+json' 2>"${err}")"; then
+    # 404 は template に無いファイルなので飛ばす。それ以外 (未認証・通信障害・rate limit) は比較できていないので失敗にする
+    if grep -q 'HTTP 404' "${err}"; then
+      echo "!! ${f}: not in ${repo} main (skipped)"
+    else
+      echo "!! ${f}: fetch failed: $(cat "${err}")" >&2
+      failed=1
+    fi
+    continue
+  fi
+  if [[ ! -f "${f}" ]]; then
+    echo "!! ${f}: missing locally"
+    continue
+  fi
+  diff -u --label "template/${f}" --label "${f}" <(printf '%s\n' "${upstream}") "${f}" || true
+done
+exit "${failed}"
+'''

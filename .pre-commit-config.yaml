@@ -1,3 +1,11 @@
+# commitlint を commit-msg stage で動かすため、commit-msg hook も導入する
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+# stages 未指定の hook は導入した全 hook type で走るため、commit-msg stage で重ねて走らないよう限定する
+default_stages:
+  - pre-commit
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -35,7 +43,21 @@ repos:
       - id: dprint-fmt
         name: Format json/yaml/markdown/toml with dprint
         language: system
-        # --allow-no-files: 渡されたファイルがすべて dprint.json の excludes 対象のとき
-        # (例: mise.lock のみの commit) に exit 14 (No files found) で失敗しないようにする
+        # --allow-no-files: 渡されたファイルがすべて dprint.json の excludes に当たるとき
+        # (mise.lock だけの commit 等) に exit 14 (No files found) で失敗しないようにする
         entry: mise exec -- dprint fmt --allow-no-files
         types_or: [json, yaml, markdown, toml]
+      # CI の gitleaks job は commit 後の検知なので、commit 前に止めるのはこの hook が担う
+      - id: gitleaks
+        name: Scan staged changes for secrets with gitleaks
+        language: system
+        entry: mise exec -- gitleaks git --pre-commit --redact --staged --verbose
+        pass_filenames: false
+      - id: commitlint
+        name: Lint commit message with commitlint
+        # language: node なので prek が node と依存を隔離環境に入れる。リポジトリに node は要らない
+        language: node
+        additional_dependencies:
+          ["@commitlint/cli@21.2.4", "@commitlint/config-conventional@21.2.4"]
+        entry: commitlint --edit
+        stages: [commit-msg]
