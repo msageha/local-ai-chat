@@ -23,7 +23,6 @@
 !/.editorconfig
 !/.env.example
 !/README.md
-!/CLAUDE.md
 !/compose.yaml
 !/compose.gpu.yaml
 !/mise.toml

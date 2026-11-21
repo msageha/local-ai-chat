@@ -65,7 +65,7 @@ run = "docker compose run --rm --user \"$(id -u):$(id -g)\" --entrypoint bash cl
 description = "README.md のタスク一覧を mise.toml と同期する"
 run = "mise generate task-docs --inject --output README.md"
 
-# README.md / CODEOWNERS / CLAUDE.md / mise.lock はリポジトリごとに書き換えるので比較しない
+# README.md / CODEOWNERS / mise.lock はリポジトリごとに書き換えるので比較しない (CLAUDE.md はこのリポジトリに置かない)
 [tasks.template-diff]
 description = "共通ファイルを dope-corp/template の main と比較する"
 run = '''
