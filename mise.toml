@@ -14,6 +14,9 @@ typos = "1.52.2"
 # dclint は macOS 向けのバイナリを配布していないので npm から入れる。npm の backend が使う node も揃えて pin する
 node = "26.13.1"
 "npm:dclint" = "3.1.0"
+# Apple Silicon の構成 (compose.apple.yaml) でホストに動かす Ollama。MLX は Apple Silicon の macOS でしか動かないので、そこにだけ入れる。
+# compose.yaml の ollama/ollama イメージと同じバージョンにする
+ollama = { version = "0.40.17", os = ["macos/arm64"] }
 
 [hooks]
 postinstall = "prek install"
@@ -24,6 +27,49 @@ lockfile = true
 [tasks.up]
 description = "全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)"
 run = "docker compose up -d"
+
+[tasks.serve]
+description = "Apple Silicon の構成で、ホストの Ollama を起動する (`mise run up` の前に別のターミナルで実行し、Ctrl-C で止める)"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ $(uname -sm) != "Darwin arm64" ]]; then
+  echo "serve runs Ollama on the host and needs macOS on Apple Silicon" >&2
+  exit 1
+fi
+# bind 先・ポート・Ollama の設定は compose が .env と環境変数から決めた値を使い、コンテナで動かすときと揃える
+config=$(docker compose config --format json)
+if ! jq -e '.services["ollama-init"].environment.PULL_MLX_MODELS == "1"' <<<"$config" >/dev/null; then
+  echo "add compose.apple.yaml to COMPOSE_FILE in .env so the services connect to the host Ollama" >&2
+  exit 1
+fi
+# compose.apple.yaml の ollama サービスは --to host.docker.internal:<port> へ転送するので、そのポートで待ち受ける
+port=$(jq -r '.services.ollama.command | .[index("--to") + 1]' <<<"$config")
+port=${port##*:}
+bind_host=$(jq -r '.services["open-webui"].ports[0].host_ip' <<<"$config")
+# プロキシは host.docker.internal (ホストの loopback) へ転送するので、loopback を含む bind 先だけを受け付ける
+case $bind_host in
+127.* | ::1 | 0.0.0.0 | ::) ;;
+*)
+  echo "BIND_HOST=$bind_host is not supported with compose.apple.yaml; use 127.0.0.1 or 0.0.0.0" >&2
+  exit 1
+  ;;
+esac
+# IPv6 のアドレスは、ポートと区別できるよう [] で囲む
+if [[ $bind_host == *:* ]]; then
+  bind_host="[$bind_host]"
+fi
+mkdir -p data/ollama/models data/ollama/home
+# ollama.com の認証鍵は $HOME/.ollama から読まれるので、ホストのユーザーのサインイン状態を引き継がないよう、
+# コンテナの ollama と同じくプロジェクトの下に分ける
+export HOME="$PWD/data/ollama/home"
+# コンテナの ollama と同じモデル置き場を使い、ollama-init がそこで digest を照合できるようにする
+export OLLAMA_HOST="$bind_host:$port" OLLAMA_MODELS="$PWD/data/ollama/models"
+export OLLAMA_KEEP_ALIVE OLLAMA_MAX_LOADED_MODELS
+OLLAMA_KEEP_ALIVE=$(jq -r '.services.ollama.environment.OLLAMA_KEEP_ALIVE' <<<"$config")
+OLLAMA_MAX_LOADED_MODELS=$(jq -r '.services.ollama.environment.OLLAMA_MAX_LOADED_MODELS' <<<"$config")
+exec ollama serve
+'''
 
 [tasks.down]
 description = "全サービスを停止する"
@@ -41,9 +87,10 @@ url="http://localhost:${port##*:}"
 open "$url" 2>/dev/null || xdg-open "$url" 2>/dev/null || echo "$url"
 '''
 
+# Apple Silicon の構成では ollama サービスがプロキシになり ollama コマンドを持たないので、ollama-init のイメージで問い合わせる
 [tasks.models]
 description = "Ollama に登録済みのモデルを一覧する"
-run = "docker compose exec ollama ollama list"
+run = "docker compose run --rm --no-deps --entrypoint ollama ollama-init list"
 
 [tasks.pull]
 description = "ollama/models.txt のモデルを pull してエイリアスを更新する"

@@ -17,6 +17,7 @@
 !/ollama/models.txt
 !/ollama/pull-models.sh
 !/ollama/update-digests.sh
+!/ollama/check-versions.sh
 
 !/.gitignore
 !/.gitattributes
@@ -25,6 +26,7 @@
 !/README.md
 !/compose.yaml
 !/compose.gpu.yaml
+!/compose.apple.yaml
 !/mise.toml
 !/mise.lock
 # npm の backend のツールの依存関係の lock。mise lock が mise.lock と合わせて書き出す

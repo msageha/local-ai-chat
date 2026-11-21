@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # models.txt の各モデルの digest を、source の tag が今指す manifest の sha256 に書き換える。
-# digest の無い行には追記する。manifest を取得できなかった行は元のまま残して続け、最後に非 0 で終了する。
+# digest の無い行には source の直後に足す (後ろの列はそのまま残す)。manifest を取得できなかった行は元のまま残して続け、最後に非 0 で終了する。
 set -euo pipefail
 
 models_file=${1:-"$(dirname "$0")/models.txt"}
@@ -12,7 +12,12 @@ cp -p "$models_file" "$tmp"
 failed=""
 
 while IFS= read -r line || [[ -n $line ]]; do
-  read -r alias source digest _ <<<"$line" || true
+  read -r alias source digest rest <<<"$line" || true
+  # digest の無い行では、3 列目は後ろの列 (要件) なので、digest として扱わない
+  if [[ ${digest:-} != sha256:* ]]; then
+    rest="${digest:-}${rest:+ $rest}"
+    digest=""
+  fi
   if [[ -z ${alias:-} || $alias == '#'* ]]; then
     printf '%s\n' "$line"
     continue
@@ -25,7 +30,7 @@ while IFS= read -r line || [[ -n $line ]]; do
   # Ollama 形式のレジストリは匿名の取得に、Ollama が pull で保存するのと同じ manifest を返す
   # (Ollama の User-Agent では署名付きの認証を求められる)。hf.co は huggingface.co へ redirect する
   url="https://${name%%/*}/v2/${name#*/}/manifests/${source##*:}"
-  # Ollama が pull で送るのと同じ Accept で取得し、単体の manifest であることを確かめる。
+  # 単体の manifest を返す tag だけを扱う (pull-models.sh の照合も、単体の manifest の digest を前提にしている)。
   # 改行も含めたバイト列をハッシュするため、本文はファイルで受ける
   if ! curl -fsSL --max-time 60 -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' -o "$body" "$url" ||
     ! jq -e '.mediaType == "application/vnd.docker.distribution.manifest.v2+json" and (.layers | type == "array")' "$body" >/dev/null; then
@@ -35,8 +40,8 @@ while IFS= read -r line || [[ -n $line ]]; do
     continue
   fi
   new="sha256:$(shasum -a 256 "$body" | cut -d ' ' -f 1)"
-  if [[ -z ${digest:-} ]]; then
-    line="$line $new"
+  if [[ -z $digest ]]; then
+    line="$alias $source $new${rest:+ $rest}"
   elif [[ $digest != "$new" ]]; then
     line=${line/"$digest"/"$new"}
   else

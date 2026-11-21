@@ -229,6 +229,17 @@ aube = { path = ".mise/locks/npm-dclint/3.1.0", digest = "sha256:df7c18cf3278f6b
 backend = "npm:dclint"
 specifiers = ["3.1.0"]
 
+[[tools.ollama]]
+version = "0.40.17"
+backend = "aqua:ollama/ollama"
+specifiers = ["0.40.17"]
+
+[tools.ollama."platforms.macos-arm64"]
+checksum = "sha256:4b9db20d077c5a1e52fb4a6f2e6791f76ae945fd07c9b1a5647c82e927826653"
+checksum_source = "mise-versions"
+url = "https://github.com/ollama/ollama/releases/download/v0.40.17/ollama-darwin.tgz"
+url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/774304881"
+
 [[tools.prek]]
 version = "0.5.9"
 backend = "aqua:j178/prek"
