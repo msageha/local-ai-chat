@@ -38,7 +38,8 @@ lockfile = true
 # WEBUI_PORT = "3000"
 # ログイン画面を有効にするなら true (false だと接続できる誰でも管理者として使える)。ユーザー登録後は false に戻せない
 # WEBUI_AUTH = "false"
-# 未設定なら初回起動時に自動生成して data/open-webui/.webui_secret_key に保存する。設定するなら mise.local.toml に書く
+# 未設定なら初回起動時に自動生成して data/open-webui/.webui_secret_key に保存する。
+# [env] の値は mise 経由で動かすすべてのコマンドに渡るので、鍵を指定する必要があるときだけ mise.local.toml に書く
 # WEBUI_SECRET_KEY = "<secret>"
 # Web UI と aider の既定モデル。ollama/models.txt のエイリアスをタグ付きで指定する。
 # Web UI 側は初回起動時にだけ読み込まれ、以後は管理画面の設定が優先される

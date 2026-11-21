@@ -24,7 +24,7 @@ mise run ui                  # ブラウザで Web UI を開く
 
 モデルの pull 状況は `mise run logs` で確認できます。pull が終わったモデルから順に Web UI に現れます。
 ポート・既定モデル・GPU 構成 (`COMPOSE_FILE`) などの設定は `mise.toml` の `[env]` に一覧があり、コメントを外すと変えられます。手元だけの値と secret (`WEBUI_SECRET_KEY`) は、git 管理外の `mise.local.toml` の `[env]` に書きます。
-以前 `.env` で設定を変えていた場合は、その値を `mise.local.toml` の `[env]` に移して `.env` を消してください。Compose は残った `.env` も読むので、設定の置き場が 2 つに分かれます。
+以前 `.env` で設定を変えていた場合は、その値を `mise.local.toml` の `[env]` に移して `.env` を消してください (`MOUNT_DIR` は移さず、実行時にシェルから渡します。mise は値の中の `$` を変数として展開するので、`$` は `$$` と書きます)。Compose は残った `.env` も読むので、設定の置き場が 2 つに分かれます。
 既定ではポートを `127.0.0.1` にのみ bind します。同じネットワークの他の端末から使うなら `[env]` で `BIND_HOST = "0.0.0.0"` を設定してください。
 CLI で別のプロジェクトを編集するときは `MOUNT_DIR=/path/to/project mise run code` のようにマウント先を指定します。
 
