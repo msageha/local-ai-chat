@@ -2,10 +2,10 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-    "helpers:pinGitHubActionDigests"
+    "helpers:pinGitHubActionDigests",
+    "docker:pinDigests"
   ],
   "timezone": "Asia/Tokyo",
-  "separateMajorMinor": true,
   "lockFileMaintenance": {
     "enabled": true
   },
@@ -13,16 +13,46 @@
     "enabled": true
   },
   "minimumReleaseAge": "7 days",
+  "schedule": [
+    "before 9am on monday"
+  ],
   "packageRules": [
     {
-      "description": "PR の乱立を防ぐため、major 以外 (minor/patch/pin/digest) の更新は manager・エコシステム横断で 1 つの PR に集約する。major は separateMajorMinor により分離され、グルーピングせず個別 PR で人手レビューする",
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
+      "description": "ghcr.io のイメージや、tag が付け替えられた GitHub Actions の digest 更新など、公開日時を取れない更新がある。既定 (timestamp-required) ではそれらが常に pending になり、同じ PR にまとめた更新ごと自動 merge が止まるので、公開日時がある版にだけ minimumReleaseAge を適用する",
+      "matchPackageNames": [
+        "*"
+      ],
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    },
+    {
+      "description": "PR が乱立しないよう、major 以外の更新は manager を問わず 1 つの PR にまとめる。major は個別 PR で人手レビューする",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest",
+        "pinDigest"
+      ],
       "groupName": "all non-major dependencies",
       "groupSlug": "all-minor-patch"
     },
     {
-      "description": "patch/minor は minimumReleaseAge (7日) 経過後、CI green を条件に自動マージする。major は供給網攻撃対策の猶予期間だけでは不十分なため対象外とし、人手レビューを必須とする",
-      "matchUpdateTypes": ["patch", "minor"],
+      "description": "major 以外は minimumReleaseAge 経過後、GitHub の auto-merge で merge する。main の ruleset が prek / gitleaks の green を必須にしているので、CI が通るまで merge されない。major は猶予期間だけでは供給網攻撃への備えが足りないため人手でレビューする",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest",
+        "pinDigest"
+      ],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "lock file maintenance (mise.lock の再解決) は mise.toml で固定した版の配布物の情報に限られるので、CI が green なら自動 merge する",
+      "matchUpdateTypes": [
+        "lockFileMaintenance"
+      ],
       "automerge": true,
       "automergeType": "pr"
     }
@@ -30,17 +60,23 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "workflow の container.image (digest pin + バージョンコメント) を docker datasource で更新する",
-      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
-      "matchStrings": [
-        "image:\\s+(?<depName>[a-z0-9./_-]+)@(?<currentDigest>sha256:[a-f0-9]{64})\\s+#\\s+(?<currentValue>v?\\d+\\.\\d+\\.\\d+)"
+      "description": "ollama/models.txt のモデル行の digest を更新する。source は tag を含めて package 名にする (tag ごとに別の digest を引くため)",
+      "managerFilePatterns": [
+        "/(^|/)ollama/models\\.txt$/"
       ],
-      "datasourceTemplate": "docker"
+      "matchStrings": [
+        "(?:^|\\n)[ \\t]*[^#\\s]\\S*[ \\t]+(?<depName>\\S+/\\S+:\\S+)[ \\t]+(?<currentDigest>sha256:[a-f0-9]{64})\\b"
+      ],
+      "currentValueTemplate": "pinned",
+      "datasourceTemplate": "custom.ollama-digests",
+      "versioningTemplate": "exact"
     },
     {
       "customType": "regex",
-      "description": "dprint.json の公式プラグイン (dprint/dprint-plugin-*) の WASM URL を更新する。@ 以降の sha256 checksum は github-release-attachments datasource が release asset (plugin.wasm) の実ハッシュ照合で追従させる",
-      "managerFilePatterns": ["/(^|/)dprint\\.json$/"],
+      "description": "dprint.json の公式 plugin (dprint/dprint-plugin-*) の WASM URL を更新する。@ 以降の sha256 は github-release-attachments datasource が release asset のハッシュから追従させる",
+      "managerFilePatterns": [
+        "/(^|/)dprint\\.json$/"
+      ],
       "matchStrings": [
         "https://plugins\\.dprint\\.dev/(?<depName>[a-z0-9-]+)-(?<currentValue>\\d+\\.\\d+\\.\\d+)\\.wasm(?:@(?<currentDigest>[a-f0-9]{64}))?"
       ],
@@ -50,21 +86,25 @@
     },
     {
       "customType": "regex",
-      "description": "dprint.json の g-plane プラグインの WASM URL を更新する (tag は v prefix 付きなので currentValue に含めて照合する)",
-      "managerFilePatterns": ["/(^|/)dprint\\.json$/"],
+      "description": "dprint.json の g-plane plugin の WASM URL を更新する。tag に v が付くので currentValue に含めて照合する",
+      "managerFilePatterns": [
+        "/(^|/)dprint\\.json$/"
+      ],
       "matchStrings": [
         "https://plugins\\.dprint\\.dev/g-plane/(?<depName>[a-z0-9_-]+)-(?<currentValue>v\\d+\\.\\d+\\.\\d+)\\.wasm(?:@(?<currentDigest>[a-f0-9]{64}))?"
       ],
       "datasourceTemplate": "github-release-attachments",
       "packageNameTemplate": "g-plane/{{depName}}",
       "versioningTemplate": "semver"
-    },
-    {
-      "customType": "regex",
-      "description": ".pre-commit-config.yaml の additional_dependencies にある dprint の pin を npm datasource で更新する (node を使うリポジトリで dprint を devDependencies 管理に切り替えた場合に効く)",
-      "managerFilePatterns": ["/(^|/)\\.pre-commit-config\\.yaml$/"],
-      "matchStrings": ["\"(?<depName>dprint)@(?<currentValue>\\d+\\.\\d+\\.\\d+)\""],
-      "datasourceTemplate": "npm"
     }
-  ]
+  ],
+  "customDatasources": {
+    "ollama-digests": {
+      "description": "ollama-models.yaml が ollama-digests ブランチに置く、source ごとの manifest の sha256。Ollama 形式のレジストリは manifest の digest を返さず、Renovate では計算できないため",
+      "defaultRegistryUrlTemplate": "https://raw.githubusercontent.com/msageha/local-ai-chat/ollama-digests/digests.json",
+      "transformTemplates": [
+        "{\"releases\": [{\"version\": \"pinned\", \"digest\": $lookup($, \"{{{packageName}}}\")}]}"
+      ]
+    }
+  }
 }

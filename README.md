@@ -4,12 +4,12 @@
 
 ## サービス構成
 
-| サービス      | 説明                                                                | デフォルトポート |
-| ------------- | ------------------------------------------------------------------- | ---------------- |
-| `ollama`      | LLM バックエンド (OpenAI 互換 API)                                  | 11434            |
-| `ollama-init` | 起動時に `ollama/models.txt` のモデルを pull してエイリアスを付ける | — (完了後に終了) |
-| `open-webui`  | ChatGPT 風 Web UI                                                   | 3000             |
-| `cli`         | aider ベースの Claude Code / Codex 風 CLI                           | — (対話型)       |
+| サービス      | 説明                                                                                       | デフォルトポート |
+| ------------- | ------------------------------------------------------------------------------------------ | ---------------- |
+| `ollama`      | LLM バックエンド (OpenAI 互換 API)                                                         | 11434            |
+| `ollama-init` | 起動時に `ollama/models.txt` のモデルを pull し、digest が一致したものにエイリアスを付ける | — (完了後に終了) |
+| `open-webui`  | ChatGPT 風 Web UI                                                                          | 3000             |
+| `cli`         | aider ベースの Claude Code / Codex 風 CLI                                                  | — (対話型)       |
 
 ## 使い方
 
@@ -29,16 +29,32 @@ CLI で別のプロジェクトを編集するときは `MOUNT_DIR=/path/to/proj
 
 ### モデルの追加・変更
 
-`ollama/models.txt` に 1 行 `<alias> <source>` で追記し、`mise run pull` を実行します。
+`ollama/models.txt` に 1 行 `<alias> <source>` で追記し、`mise run digests` で digest を書き込んでから `mise run pull` を実行します。
+source は `registry.ollama.ai/<namespace>/<model>:<tag>` (公式モデルの namespace は `library`) か `hf.co/<user>/<repo>:<tag>` の形で書きます。
+digest は manifest の sha256 で、`mise run models` が表示する ID はその先頭 12 文字です。
+Ollama は digest を指定して pull できないため、tag で pull した後に digest を照合し、一致したときだけ alias を更新します。
+tag の内容が上流で更新されると、Renovate が digest を更新するまで (「[依存関係の更新](#依存関係の更新)」) そのモデルは digest 不一致で失敗し、alias は前の版のまま残ります。
 alias は Ollama 上で `<alias>:latest` として登録され、Web UI と CLI から参照できます。CLI のモデルはシェルの環境変数で切り替えます (`MODEL=dolphin mise run chat`。`.env` の `DEFAULT_MODEL` は既定値、`MODEL` は `.env` では効きません)。
-pull に失敗したモデルは警告を出してスキップされ、最後に非 0 で終了します。
+pull や照合に失敗したモデルは警告を出してスキップされ、最後に非 0 で終了します。
 
 ## 開発
 
-`mise install` が `prek install` を実行し、`.pre-commit-config.yaml` の hook (dprint による整形、shellcheck、actionlint、compose ファイルの検証、タスク一覧の同期) を commit 時に走らせます。compose ファイルの検証には Docker CLI が必要です。
-手元で全ファイルを検査するには `prek run --all-files` を実行します。
-CI (`.github/workflows/ci.yaml`) は同じ hook を全ファイルに対して実行し、gitleaks でシークレットをスキャンします。
-ツールのバージョンは `mise.toml`、イメージのバージョンは `compose.yaml` に固定し、更新は Renovate と `mise-lock.yaml` に任せます。
+`mise install` が `prek install` を実行し、`.pre-commit-config.yaml` の hook を commit 時に走らせます。pre-commit では dprint による整形、TOML の構文検査、shellcheck、actionlint と zizmor による workflow の検査、dclint と `docker compose config` による compose ファイルの検査、typos によるスペルチェック、タスク一覧の同期、gitleaks による staged 差分のシークレットスキャンを行い、commit-msg では commitlint が commit message を [Conventional Commits](https://www.conventionalcommits.org/) で検査します。compose ファイルの検証には Docker CLI が必要です。
+手元で全ファイルを検査するには `mise exec -- prek run --all-files` を実行します。
+CI (`.github/workflows/ci.yaml`) は pull request で、同じ hook を全ファイルに対して実行する `prek` job と、コミット履歴全体をスキャンする `gitleaks` job を走らせます。
+issue や PR のコメントで `@claude` とメンションすると Claude Code が応答し (`claude.yaml`)、毎週月曜には前回以降の差分を Claude Code がレビューして指摘を issue に起票します (`claude-sweep.yaml`)。どちらもリポジトリ secret `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token` で発行) が必要で、`@claude` への応答には [Claude GitHub App](https://github.com/apps/claude) のインストールも必要です。
+共通ファイルは [dope-corp/template](https://github.com/dope-corp/template) に揃えており、`mise run template-diff` で差分を確認できます。
+
+### 依存関係の更新
+
+ツール・イメージ・モデルはすべて digest か exact version で固定し、Renovate が毎週月曜 9 時前 (Asia/Tokyo) に更新 PR を作ります。
+
+- `mise.toml` のツールと `mise.lock`、`compose.yaml` のイメージ (`<tag>@sha256:<digest>`)、workflow の `uses:` の commit SHA、`.pre-commit-config.yaml` の hook、`dprint.json` の plugin
+- `ollama/models.txt` のモデルの digest: Ollama 形式のレジストリは manifest の digest を返さないため、`ollama-models.yaml` が毎日 0 時 (Asia/Tokyo) に各 tag が今指す manifest の sha256 を計算して `ollama-digests` ブランチの `digests.json` に置き、Renovate がそれを読んで更新する。モデルを追加してから最初の計算までは、Renovate の Dependency Dashboard に digest を決められない旨の警告が出る
+
+major 以外の更新は 1 つの PR にまとめ、GitHub の auto-merge で merge します。main の ruleset が CI の `prek` / `gitleaks` の成功を必須にしているので、CI が通るまで merge されません。
+Renovate は公開から 7 日経っていない版を待ってから取り込みます (`minimumReleaseAge`)。ただし、公開日時を取得できないもの (ghcr.io のイメージ、tag が付け替えられた action の digest、モデルの digest、`mise.lock` の再生成) は待たずに取り込みます。
+major の更新は個別の PR になり、手で確認して merge します。
 
 ## 収録モデル
 
@@ -156,6 +172,12 @@ aider でチャットする (環境変数 MODEL にエイリアスを指定す�
 
 MOUNT_DIR のコードを aider で編集する (環境変数 MODEL でモデルを切り替え、`--` 以降は aider に渡す)
 
+## `digests`
+
+- **Usage:** `digests`
+
+ollama/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)
+
 ## `docs`
 
 - **Usage:** `docs`
@@ -191,6 +213,12 @@ ollama/models.txt のモデルを pull してエイリアスを更新する
 - **Usage:** `shell`
 
 aider コンテナで bash を起動する
+
+## `template-diff`
+
+- **Usage:** `template-diff`
+
+共通ファイルを dope-corp/template の main と比較する
 
 ## `ui`
 

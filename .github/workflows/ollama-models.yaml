@@ -1,0 +1,58 @@
+name: Ollama model digests
+
+# ollama/models.txt の各 source の tag が今指す manifest の sha256 を求め、ollama-digests ブランチの digests.json に置く。
+# Renovate はこれを custom datasource として読み、models.txt の digest を更新する PR を作る。
+# Ollama 形式のレジストリは manifest の digest を返さず、Renovate では計算できないため、この workflow が計算を担う。
+on:
+  schedule:
+    # 毎日 00:00 JST
+    - cron: "0 15 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ollama-models
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BRANCH: ollama-digests
+    steps:
+      # 手動実行で選んだ ref に関わらず、default branch のモデル一覧を対象にする
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      # 取得できなかったモデルがあれば公開しない。その行は main の古い digest のままなので、公開すると
+      # 公開済みの新しい digest が巻き戻る
+      - name: Resolve digests
+        run: |
+          ollama/update-digests.sh
+          jq -Rn '[inputs | sub("^\\s+"; "") | select(test("^(#|$)") | not) | [splits("\\s+")] | {key: .[1], value: .[2]}] | from_entries' \
+            ollama/models.txt > "$RUNNER_TEMP/digests.json"
+          cat "$RUNNER_TEMP/digests.json"
+
+      - name: Publish to the data branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch --depth 1 "$remote" "$BRANCH" && git show FETCH_HEAD:digests.json | cmp -s - "$RUNNER_TEMP/digests.json"; then
+            echo "digests.json に変更が無い"
+            exit 0
+          fi
+          # 履歴は要らないので、毎回 1 commit だけのブランチに置き換える
+          publish="$RUNNER_TEMP/publish"
+          git init -q -b "$BRANCH" "$publish"
+          cp "$RUNNER_TEMP/digests.json" "$publish/"
+          git -C "$publish" add digests.json
+          git -C "$publish" -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "chore: update ollama model digests"
+          git -C "$publish" push --force "$remote" "$BRANCH"

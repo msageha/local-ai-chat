@@ -1,13 +1,15 @@
-# 起動時に pull するモデル。1 行 1 モデルで `<alias> <source>`
+# 起動時に pull するモデル。1 行 1 モデルで `<alias> <source> <digest>`
 #   alias:  Ollama 上での名前 (`<alias>:latest` として登録される)
-#   source: pull 元のモデル名 (Ollama ライブラリ / Hugging Face)
-# 追加・変更後は `mise run pull` で反映する
-super-gemma    0xIbra/supergemma4-26b-uncensored-gguf-v2:Q4_K_M
-llama4         llama4:17b-scout-16e-instruct-q4_K_M
-qwen35         huihui_ai/qwen3.5-abliterated:9b-q4_K
-dark-champion  hf.co/DavidAU/Llama-3.2-8X4B-MOE-V2-Dark-Champion-Instruct-uncensored-abliterated-21B-GGUF:Q4_K_M
-dolphin        hf.co/bartowski/cognitivecomputations_Dolphin-Mistral-24B-Venice-Edition-GGUF:Q4_K_M
-deepseek-r1    huihui_ai/deepseek-r1-abliterated:8b-0528-qwen3-q4_K_M
-hermes         hf.co/NousResearch/Hermes-4.3-36B-GGUF:Q4_K_M
+#   source: pull 元のモデル名。`<host>/<namespace>/<model>:<tag>` の完全な名前で書く (公式モデルの namespace は library)
+#   digest: manifest の sha256 (`ollama list` の ID はこの先頭 12 文字)。Ollama は digest を指定して pull できないため、
+#           pull 後に照合し、食い違えば alias を更新しない。Renovate が各 tag の最新へ更新する
+# 追加・変更後は `mise run digests` で digest を書き込み、`mise run pull` で反映する
+super-gemma    registry.ollama.ai/0xIbra/supergemma4-26b-uncensored-gguf-v2:Q4_K_M                                                                     sha256:9453aa2a9e449034ecaf2426a815c7faa754f4f76161ae08ad9671d08f1ad26c
+llama4         registry.ollama.ai/library/llama4:17b-scout-16e-instruct-q4_K_M                                                                         sha256:bf31604e25c25d964e250bcf28a82bfbdbe88af5f236257fabb27629bb24c7f3
+qwen35         registry.ollama.ai/huihui_ai/qwen3.5-abliterated:9b-q4_K                                                                                sha256:92a443adb124f5e805bbdee23fdb38fcd22a7bf00a1016b53f764e741369c600
+dark-champion  hf.co/DavidAU/Llama-3.2-8X4B-MOE-V2-Dark-Champion-Instruct-uncensored-abliterated-21B-GGUF:Q4_K_M                                         sha256:27b5a53e42c7433862d5969d8dbdbdb87e644a53826273e80dde15a90840e395
+dolphin        hf.co/bartowski/cognitivecomputations_Dolphin-Mistral-24B-Venice-Edition-GGUF:Q4_K_M                                                    sha256:c7892f1858dc027155343c08a008abdbee143c81b781922a5ea1e6b3c7cf07da
+deepseek-r1    registry.ollama.ai/huihui_ai/deepseek-r1-abliterated:8b-0528-qwen3-q4_K_M                                                               sha256:5ae823b61e22a71e344bffbb6b2146dd8520cbb1d493595ae935a840f027fda8
+hermes         hf.co/NousResearch/Hermes-4.3-36B-GGUF:Q4_K_M                                                                                           sha256:8ce93da7031463331e224468d3fd811fc50827931aab393823c48432835d7759
 # K_P 量子化は Hugging Face が量子化名として認識しないため、tag にファイル名を指定する
-qwen38         hf.co/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF:Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf
+qwen38         hf.co/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF:Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf               sha256:139f06ef22bcf06f5b6083f7a737bdf9885c60ab6e9e7e04f9eaad8ac9fea6dc
