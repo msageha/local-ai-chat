@@ -13,14 +13,14 @@ services:
       - ${MOUNT_DIR:-.}:/app
     environment:
       OLLAMA_API_BASE: *ollama-url
-      AIDER_MODEL: "ollama_chat/${DEFAULT_MODEL:-qwen35:latest}"
+      AIDER_MODEL: "ollama_chat/${DEFAULT_MODEL:-qwen35-4b-heretic:latest}"
     working_dir: /app
     profiles: [cli]
     stdin_open: true
     tty: true
 
   ollama:
-    image: ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551
+    image: ollama/ollama:0.40.17@sha256:ccc42bcd3d5fcf7ab0d532b300382154e1a4da56fc666bdb313b78ebdd912754
     volumes:
       - ./data/ollama:/root/.ollama
     environment:
@@ -39,21 +39,21 @@ services:
   # ollama/models.txt のモデルを pull してエイリアスを付ける。起動ごとに再実行され、
   # 失敗したモデルがあると非 0 で終了する。Web UI はこの完了を待たない
   ollama-init:
-    image: ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551 # ollama と同じバージョンにする
+    image: ollama/ollama:0.40.17@sha256:ccc42bcd3d5fcf7ab0d532b300382154e1a4da56fc666bdb313b78ebdd912754 # ollama と同じバージョンにする
     depends_on:
       ollama:
         condition: service_healthy
     volumes:
       - ./ollama:/config:ro
-      # pull したモデルの digest を照合するために ollama サービスの manifest を読む
-      - ./data/ollama/models/manifests:/manifests:ro
+      # pull したモデルの digest を照合するために ollama サービスの manifest を読む (manifest の実体は blobs にある)
+      - ./data/ollama/models:/models:ro
     environment:
       OLLAMA_HOST: *ollama-url
     entrypoint: [
       "sh",
       "/config/pull-models.sh",
       "/config/models.txt",
-      "/manifests",
+      "/models",
     ]
 
   open-webui:
@@ -69,7 +69,7 @@ services:
       # 未設定なら初回起動時に自動生成され、データボリューム内のこのファイルに保存される
       WEBUI_SECRET_KEY: "${WEBUI_SECRET_KEY:-}"
       WEBUI_SECRET_KEY_FILE: /app/backend/data/.webui_secret_key
-      DEFAULT_MODELS: "${DEFAULT_MODEL:-qwen35:latest}"
+      DEFAULT_MODELS: "${DEFAULT_MODEL:-qwen35-4b-heretic:latest}"
     ports:
       - "${BIND_HOST:-127.0.0.1}:${WEBUI_PORT:-3000}:8080"
     restart: unless-stopped

@@ -1,15 +1,23 @@
-# 起動時に pull するモデル。1 行 1 モデルで `<alias> <source> <digest>`
+# 起動時に pull するモデル。1 行 1 モデルで `<alias> <source> <digest> [<requires>]`
 #   alias:  Ollama 上での名前 (`<alias>:latest` として登録される)
 #   source: pull 元のモデル名。`<host>/<namespace>/<model>:<tag>` の完全な名前で書く (公式モデルの namespace は library)
 #   digest: manifest の sha256 (`ollama list` の ID はこの先頭 12 文字)。Ollama は digest を指定して pull できないため、
 #           pull 後に照合し、食い違えば alias を更新しない。Renovate が各 tag の最新へ更新する
+#   requires: 省略可。`mlx` は Ollama が MLX でしか動かせないモデルで、Apple Silicon の構成 (compose.apple.yaml) のときだけ pull する
 # 追加・変更後は `mise run digests` で digest を書き込み、`mise run pull` で反映する
-super-gemma    registry.ollama.ai/0xIbra/supergemma4-26b-uncensored-gguf-v2:Q4_K_M                                                                     sha256:9453aa2a9e449034ecaf2426a815c7faa754f4f76161ae08ad9671d08f1ad26c
-llama4         registry.ollama.ai/library/llama4:17b-scout-16e-instruct-q4_K_M                                                                         sha256:bf31604e25c25d964e250bcf28a82bfbdbe88af5f236257fabb27629bb24c7f3
-qwen35         registry.ollama.ai/huihui_ai/qwen3.5-abliterated:9b-q4_K                                                                                sha256:92a443adb124f5e805bbdee23fdb38fcd22a7bf00a1016b53f764e741369c600
-dark-champion  hf.co/DavidAU/Llama-3.2-8X4B-MOE-V2-Dark-Champion-Instruct-uncensored-abliterated-21B-GGUF:Q4_K_M                                         sha256:27b5a53e42c7433862d5969d8dbdbdb87e644a53826273e80dde15a90840e395
-dolphin        hf.co/bartowski/cognitivecomputations_Dolphin-Mistral-24B-Venice-Edition-GGUF:Q4_K_M                                                    sha256:c7892f1858dc027155343c08a008abdbee143c81b781922a5ea1e6b3c7cf07da
-deepseek-r1    registry.ollama.ai/huihui_ai/deepseek-r1-abliterated:8b-0528-qwen3-q4_K_M                                                               sha256:5ae823b61e22a71e344bffbb6b2146dd8520cbb1d493595ae935a840f027fda8
-hermes         hf.co/NousResearch/Hermes-4.3-36B-GGUF:Q4_K_M                                                                                           sha256:8ce93da7031463331e224468d3fd811fc50827931aab393823c48432835d7759
+qwen35-4b-heretic   hf.co/mradermacher/Qwen3.5-4B-SOMPOA-heresy-v2-GGUF:Q4_K_M                                                                 sha256:f9721b8e7c890a4fd07ac2a8c2a11e0ac93e18b27fbebeb9c2f1710188fd85c9
+gemma4-31b-heretic  hf.co/mradermacher/gemma-4-31B-it-heretic-GGUF:Q4_K_M                                                                      sha256:52520bae6687916c76ff75f875feea4b396d0737de2fac6e3314fecfdc714114
+qwen35-queen        hf.co/mradermacher/Qwen3.5-Queen-27B-GGUF:Q4_K_M                                                                           sha256:0a8604bc515c0715a24bcf4d9b33003dcb901dae17ed293cee21bcf0ea2129a1
+qwen35-9b-heretic   hf.co/mradermacher/Qwen3.5-9B-heretic-v2-GGUF:Q4_K_M                                                                       sha256:a6516f846f76e5fe9cf3e0d0387f4c858fd7e57cbf02e29deb5ec1823548cc9b
+qwen35-27b-heretic  hf.co/llmfan46/Qwen3.5-27B-uncensored-heretic-v1-GGUF:Q4_K_M                                                               sha256:ca010af793c26888731e27904c2b51c548db21c1abe5f89375e9b1693546ce7d
+goetia              hf.co/mradermacher/Goetia-26B-A4B-v1.3-Absolute-Heretic-ARA-GGUF:Q4_K_M                                                    sha256:8cdfae728884162dd56e37af9fa5ceb23f935d9acd34c7928523299f31052d6e
+llama4              registry.ollama.ai/library/llama4:17b-scout-16e-instruct-q4_K_M                                                            sha256:bf31604e25c25d964e250bcf28a82bfbdbe88af5f236257fabb27629bb24c7f3
 # K_P 量子化は Hugging Face が量子化名として認識しないため、tag にファイル名を指定する
-qwen38         hf.co/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF:Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf               sha256:139f06ef22bcf06f5b6083f7a737bdf9885c60ab6e9e7e04f9eaad8ac9fea6dc
+qwen38              hf.co/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF:Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf  sha256:139f06ef22bcf06f5b6083f7a737bdf9885c60ab6e9e7e04f9eaad8ac9fea6dc
+gemma4-26b-heretic  hf.co/llmfan46/gemma-4-26B-A4B-it-uncensored-heretic-GGUF:Q4_K_M                                                           sha256:2c1e25aad5776dfcff30575c014549fa1d09d67a2234ed54e56380fd78311ed2
+assistant-pepe      hf.co/SicariusSicariiStuff/Assistant_Pepe_70B_GGUF:Q4_K_M                                                                  sha256:6cb00c0a4d9a55138c5561d899a1347c9fd699a8eebeec7b20607ba240828930
+xortron-large       hf.co/mradermacher/XORTRON.CriminalComputing.LARGE.2026.3-GGUF:Q4_K_M                                                      sha256:91fc2353241f185f9dc62f801a9158930c47e3c90d70f5ba54403d82068b66ce
+qwen38-cyber        hf.co/philbert440/Qwen3.8-27B-Uncensored-Cyber-GGUF:Q4_K_M                                                                 sha256:de79ba26bf881c2739fdc9b7404362bab3ebb99fb4cce7c77f96d981a84b6281
+ripple-abliterated  hf.co/0xKitkat/Ripple-65B-Preview-abliterated-GGUF:Q4_K_M                                                                  sha256:56cc29c65dea4d402c93a5d200c01149817546c89b6716e1ec9bc80630fd6906
+# Ollama の library に MLX 形式の tag しか無いので、Apple Silicon の構成でだけ pull する
+inkling2-mini       registry.ollama.ai/library/inkling-2-mini:26b-a5b-nvfp4                                                                    sha256:d183b1321cb57f018c738d2a826d70f575656fbcb7cec67f333d15b0f6a3d178  mlx

@@ -13,6 +13,8 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        # compose の独自タグ (!reset) を解釈できないので外す。この override は compose-config で検査する
+        exclude: ^compose\.apple\.yaml$
       - id: check-json
       - id: check-toml
       - id: check-added-large-files
@@ -33,15 +35,22 @@ repos:
         name: Lint compose files with dclint
         language: system
         # --max-warnings 0: キーの並び順などの warning も失敗にする
-        entry: mise exec -- dclint --max-warnings 0 compose.yaml compose.gpu.yaml
+        entry: mise exec -- dclint --max-warnings 0 compose.yaml compose.gpu.yaml compose.apple.yaml
         # 設定 (.dclintrc) だけの変更でも検査し直す
-        files: ^(compose(\.gpu)?\.yaml|\.dclintrc)$
+        files: ^(compose(\.gpu|\.apple)?\.yaml|\.dclintrc)$
         pass_filenames: false
       - id: compose-config
         name: Validate compose files
         language: system
-        entry: docker compose -f compose.yaml -f compose.gpu.yaml config --quiet
-        files: ^compose(\.gpu)?\.yaml$
+        # GPU と Apple Silicon の override は別の構成なので、それぞれ compose.yaml に重ねて検査する
+        entry: sh -c 'docker compose -f compose.yaml -f compose.gpu.yaml config --quiet && docker compose -f compose.yaml -f compose.apple.yaml config --quiet'
+        files: ^compose(\.gpu|\.apple)?\.yaml$
+        pass_filenames: false
+      - id: ollama-versions
+        name: Check that the Ollama versions in compose.yaml and mise.toml match
+        language: system
+        entry: ollama/check-versions.sh
+        files: ^(compose\.yaml|mise\.toml|ollama/check-versions\.sh)$
         pass_filenames: false
       - id: zizmor
         name: Audit GitHub Actions workflows with zizmor
