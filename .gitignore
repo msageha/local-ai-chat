@@ -28,6 +28,7 @@
 !/mise.toml
 !/mise.lock
 !/.pre-commit-config.yaml
+!/.dclintrc
 !/commitlint.config.mjs
 !/dprint.json
 !/renovate.json

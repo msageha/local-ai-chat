@@ -9,6 +9,11 @@ gitleaks = "8.30.1"
 jq = "1.8.2"
 # actionlint は PATH に shellcheck があるときだけ run: を検査するため、ローカルと CI で揃えて pin する
 shellcheck = "0.11.0"
+zizmor = "1.32.0"
+typos = "1.52.2"
+# dclint は macOS 向けのバイナリを配布していないので npm から入れる。npm の backend が使う node も揃えて pin する
+node = "26.13.1"
+"npm:dclint" = "3.1.0"
 
 [hooks]
 postinstall = "prek install"

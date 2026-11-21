@@ -14,6 +14,7 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-json
+      - id: check-toml
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: mixed-line-ending
@@ -28,11 +29,31 @@ repos:
         language: system
         entry: mise exec -- shellcheck
         types: [shell]
+      - id: dclint
+        name: Lint compose files with dclint
+        language: system
+        # --max-warnings 0: キーの並び順などの warning も失敗にする
+        entry: mise exec -- dclint --max-warnings 0 compose.yaml compose.gpu.yaml
+        # 設定 (.dclintrc) だけの変更でも検査し直す
+        files: ^(compose(\.gpu)?\.yaml|\.dclintrc)$
+        pass_filenames: false
       - id: compose-config
         name: Validate compose files
         language: system
         entry: docker compose -f compose.yaml -f compose.gpu.yaml config --quiet
         files: ^compose(\.gpu)?\.yaml$
+        pass_filenames: false
+      - id: zizmor
+        name: Audit GitHub Actions workflows with zizmor
+        language: system
+        # --offline: リリース情報の解決に GitHub API を使わせない
+        entry: mise exec -- zizmor --offline .github/workflows
+        files: ^\.github/workflows/.*\.ya?ml$
+        pass_filenames: false
+      - id: typos
+        name: Check spelling with typos
+        language: system
+        entry: mise exec -- typos
         pass_filenames: false
       - id: mise-task-docs
         name: Sync task docs into README.md

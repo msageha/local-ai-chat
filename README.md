@@ -39,7 +39,7 @@ pull や照合に失敗したモデルは警告を出してスキップされ、
 
 ## 開発
 
-`mise install` が `prek install` を実行し、`.pre-commit-config.yaml` の hook を commit 時に走らせます。pre-commit では dprint による整形、shellcheck、actionlint、compose ファイルの検証、タスク一覧の同期、gitleaks による staged 差分のシークレットスキャンを行い、commit-msg では commitlint が commit message を [Conventional Commits](https://www.conventionalcommits.org/) で検査します。compose ファイルの検証には Docker CLI が必要です。
+`mise install` が `prek install` を実行し、`.pre-commit-config.yaml` の hook を commit 時に走らせます。pre-commit では dprint による整形、TOML の構文検査、shellcheck、actionlint と zizmor による workflow の検査、dclint と `docker compose config` による compose ファイルの検査、typos によるスペルチェック、タスク一覧の同期、gitleaks による staged 差分のシークレットスキャンを行い、commit-msg では commitlint が commit message を [Conventional Commits](https://www.conventionalcommits.org/) で検査します。compose ファイルの検証には Docker CLI が必要です。
 手元で全ファイルを検査するには `mise exec -- prek run --all-files` を実行します。
 CI (`.github/workflows/ci.yaml`) は pull request で、同じ hook を全ファイルに対して実行する `prek` job と、コミット履歴全体をスキャンする `gitleaks` job を走らせます。
 issue や PR のコメントで `@claude` とメンションすると Claude Code が応答し (`claude.yaml`)、毎週月曜には前回以降の差分を Claude Code がレビューして指摘を issue に起票します (`claude-sweep.yaml`)。どちらもリポジトリ secret `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token` で発行) が必要で、`@claude` への応答には [Claude GitHub App](https://github.com/apps/claude) のインストールも必要です。
