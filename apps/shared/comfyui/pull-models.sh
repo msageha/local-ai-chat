@@ -61,9 +61,10 @@ while read -r directory repo revision path sha256 _ || [ -n "$directory" ]; do
   fi
   mkdir -p "$models_dir/$directory"
   echo "pulling: $directory/$file ($repo@$revision)"
-  # 5 分間 100KB/s を下回るか、リトライを含めて 2 時間を超えたら打ち切る。打ち切っても、次の取得で途中のファイルから続きを取る
+  # 5 分間 100KB/s を下回るか、リトライを含めて 2 時間を超えたら打ち切る (curl の --max-time は 1 回の転送ごとにしか効かない)。
+  # 打ち切っても、次の取得で途中のファイルから続きを取る
   # -g: ファイル名の [] や {} を curl の URL の glob として解釈させない
-  if ! curl -gfL --retry 3 --retry-max-time 7200 --connect-timeout 30 --max-time 7200 --speed-limit 102400 --speed-time 300 -C - -o "$part" \
+  if ! timeout 7200 curl -gfL --retry 3 --connect-timeout 30 --speed-limit 102400 --speed-time 300 -C - -o "$part" \
     "https://huggingface.co/$repo/resolve/$revision/$path"; then
     echo "WARNING: failed to download $directory/$file" >&2
     failed="$failed $directory/$file"

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# この checkout から起動中のアプリの Web UI (text は Open WebUI、image と video は ComfyUI) の URL を出す。
-# 起動中のコンテナが公開しているアドレスを使うので、設定を変えてまだコンテナを作り直していなくても、実際の接続先を指す。
+# この checkout のアプリの Web UI (text は Open WebUI、image と video は ComfyUI) の URL を出す。
+# コンテナが動いていれば、そのコンテナが実際に公開しているアドレスを使う (設定を変えてまだ作り直していなくても実際の接続先を指す)。
 # Apple Silicon の構成の ComfyUI はホスト (apps/shared/comfyui/serve.sh) で動いてコンテナがポートを公開しないので、
-# そのプロセスの起動時の引数から読む
+# serve.sh と同じく compose の設定から待ち受け先を求める (応答するかは呼び出し元が確かめる)
 set -euo pipefail
 
 app=${1:?usage: app-url.sh <text|image|video>}
@@ -16,33 +16,22 @@ image | video) service=comfyui target=8188 ;;
   ;;
 esac
 
+config=$(docker compose -f "apps/$app/compose.yaml" config --format json)
+project=$(jq -er '.name' <<<"$config")
+# 同じ project 名の別の checkout のコンテナを指さないよう、接続するコンテナそのものの起動元を照合する
+container=$(docker ps -q \
+  --filter "label=com.docker.compose.project=$project" \
+  --filter "label=com.docker.compose.service=$service" \
+  --filter "label=com.docker.compose.project.working_dir=$PWD/apps/$app" | head -n 1) || true
 address=""
-# Docker に問い合わせられなくても (Docker が止まっていても)、image と video ではホストの ComfyUI を探す
-if project=$(docker compose -f "apps/$app/compose.yaml" config --format json | jq -er '.name'); then
-  # 同じ project 名の別の checkout のコンテナを指さないよう、接続するコンテナそのものの起動元を照合する
-  container=$(docker ps -q \
-    --filter "label=com.docker.compose.project=$project" \
-    --filter "label=com.docker.compose.service=$service" \
-    --filter "label=com.docker.compose.project.working_dir=$PWD/apps/$app" | head -n 1) || true
-  if [[ -n $container ]]; then
-    address=$(docker port "$container" "$target" 2>/dev/null | head -n 1) || true
-  fi
+if [[ -n $container ]]; then
+  address=$(docker port "$container" "$target" 2>/dev/null | head -n 1) || true
 fi
 if [[ -z $address && $app != text ]]; then
-  # この checkout のホストの ComfyUI を、起動したときの引数 (パスはリテラルで照合する) で見つけ、実際の待ち受け先を読む
-  main="$PWD/data/$app/comfyui-runtime/app/main.py"
-  while read -r args; do
-    if [[ $args == *" $main --listen "*" --port "* ]]; then
-      listen=${args#*" --listen "}
-      port=${args#*" --port "}
-      address="${listen%% *}:${port%% *}"
-      break
-    fi
-  # macOS の ps は C ロケールで非 ASCII の文字を加工して表示するので、パスと照合できるよう UTF-8 で出させる
-  done < <(LC_ALL=en_US.UTF-8 ps -axo args=)
+  address=$(jq -er '.services.comfyui.ports[0] | "\(.host_ip):\(.published)"' <<<"$config")
 fi
 if [[ -z $address ]]; then
-  echo "$app is not running from this checkout; start it with 'mise run up $app <setup>' (and 'mise run serve $app' for apple) first" >&2
+  echo "$app is not running from this checkout; start it with 'mise run up $app <setup>' first" >&2
   exit 1
 fi
 host=${address%:*}

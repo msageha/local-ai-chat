@@ -30,20 +30,27 @@ else
   # 認証を無効にした Open WebUI は、資格情報を照合せずに管理者 (admin@localhost) の token を返す
   credentials='{"email": "", "password": ""}'
 fi
-token=$(local_curl -X POST "$api/auths/signin" -H 'Content-Type: application/json' --data-binary @- <<<"$credentials" | jq -r '.token')
+token=$(local_curl -X POST "$api/auths/signin" -H 'Content-Type: application/json' --data-binary @- <<<"$credentials" | jq -er '.token')
 # token もコマンドの引数に載せず、process substitution で header として渡す
 auth_header() { printf 'Authorization: Bearer %s\n' "$token"; }
 
 current=$(local_curl "$api/images/config" -H @<(auth_header))
 # 前の接続先の API キーを、認証の無い ComfyUI へ送らないよう消す
-jq --slurpfile settings apps/image/open-webui.json '
-  .ENABLE_IMAGE_GENERATION = true
-  | .IMAGE_GENERATION_ENGINE = "comfyui"
-  | .COMFYUI_BASE_URL = "http://comfyui:8188"
-  | .COMFYUI_API_KEY = ""
-  | .COMFYUI_WORKFLOW = ($settings[0].workflow | tojson)
-  | .COMFYUI_WORKFLOW_NODES = $settings[0].nodes
-  | .IMAGE_SIZE = $settings[0].size
-' <<<"$current" | local_curl -X POST "$api/images/config/update" \
-  -H 'Content-Type: application/json' -H @<(auth_header) --data-binary @- >/dev/null
+desired=$(jq -c '{
+  ENABLE_IMAGE_GENERATION: true,
+  IMAGE_GENERATION_ENGINE: "comfyui",
+  COMFYUI_BASE_URL: "http://comfyui:8188",
+  COMFYUI_API_KEY: "",
+  COMFYUI_WORKFLOW: (.workflow | tojson),
+  COMFYUI_WORKFLOW_NODES: .nodes,
+  IMAGE_SIZE: .size
+}' apps/image/open-webui.json)
+# workflow は大きくなりうるので、コマンドの引数の長さの上限に当たらないよう、jq には引数ではなくファイルとして渡す
+updated=$(jq --slurpfile desired <(printf '%s' "$desired") '. + $desired[0]' <<<"$current" \
+  | local_curl -X POST "$api/images/config/update" -H 'Content-Type: application/json' -H @<(auth_header) --data-binary @-)
+# Open WebUI は知らないキーを黙って無視するので、版の更新でキー名が変わっても成功に見えないよう、保存された値を照合する
+if ! jq -e --slurpfile desired <(printf '%s' "$desired") '. as $stored | $desired[0] | to_entries | all(.value == $stored[.key])' <<<"$updated" >/dev/null; then
+  echo "Open WebUI did not store the image generation settings; check that its images config API still accepts these keys: $(jq -r 'keys | join(" ")' <<<"$desired")" >&2
+  exit 1
+fi
 echo "connected Open WebUI image generation to the image app (http://comfyui:8188)"

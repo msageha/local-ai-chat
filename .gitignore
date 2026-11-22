@@ -46,6 +46,7 @@
 
 !/scripts/
 !/scripts/app-url.sh
+!/scripts/create-shared-network.sh
 
 !/.gitignore
 !/.gitattributes

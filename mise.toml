@@ -79,9 +79,10 @@ video/apple) services=(comfyui-init) ;;
   exit 1
   ;;
 esac
-# アプリの間をつなぐ network。どの project にも属さないので、ここで作る
-# 同時に起動した別のアプリが先に作っていたら、それを使う
-docker network inspect local-ai-chat >/dev/null 2>&1 || docker network create local-ai-chat >/dev/null || docker network inspect local-ai-chat >/dev/null
+# video は共有 network に入らない
+if [[ $app != video ]]; then
+  scripts/create-shared-network.sh
+fi
 # bash 3.2 (macOS の /bin/bash) は、set -u の下で空の配列の展開をエラーにする
 docker compose "${files[@]}" up -d ${options[@]+"${options[@]}"} ${services[@]+"${services[@]}"}
 '''
@@ -160,11 +161,12 @@ long_about "アプリの models.txt のモデルを取得する。\n\nアプリ�
 run = '''
 case $usage_app in
 text) exec apps/text/compose-running.sh run --rm --no-deps ollama-init ;;
-*)
+image)
   # image の compose.yaml は共有 network を宣言しており、Compose は run でもその存在を確かめるので、up と同じく用意する
-  docker network inspect local-ai-chat >/dev/null 2>&1 || docker network create local-ai-chat >/dev/null || docker network inspect local-ai-chat >/dev/null
-  exec docker compose -f "apps/$usage_app/compose.yaml" run --rm --no-deps comfyui-init
+  scripts/create-shared-network.sh
+  exec docker compose -f apps/image/compose.yaml run --rm --no-deps comfyui-init
   ;;
+video) exec docker compose -f apps/video/compose.yaml run --rm --no-deps comfyui-init ;;
 esac
 '''
 
