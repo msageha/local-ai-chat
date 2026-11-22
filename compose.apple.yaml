@@ -1,5 +1,3 @@
-# dclint disable require-project-name-field
-# プロジェクト名は重ねる先の compose.yaml が決めるので、この override には書かない
 # Apple Silicon の macOS で、Ollama をコンテナではなくホスト (`mise run serve`) で動かす override。
 # `mise run up:apple` が compose.yaml に重ねる。コンテナからは Metal (GPU) と MLX を使えないため、
 # ollama サービスをホストの Ollama への HTTP リバースプロキシに置き換える。接続先の URL (http://ollama:11434) を

@@ -10,7 +10,7 @@
 | JSON・YAML・TOML・Markdown | 構文 (JSON・YAML・TOML。`compose.apple.yaml` は compose ファイルの検査で確かめる) と、dprint による整形 |
 | シェルスクリプト           | shellcheck                                                                                              |
 | GitHub Actions の workflow | actionlint・zizmor                                                                                      |
-| compose ファイル           | dclint と `docker compose config` (GPU と Apple Silicon の構成もそれぞれ重ねて検査する)                 |
+| compose ファイル           | `docker compose config` (GPU と Apple Silicon の構成もそれぞれ重ねて検査する)                           |
 | Ollama の版                | `compose.yaml` のイメージと `mise.toml` のホスト用の版が一致するか                                      |
 | 綴り                       | typos                                                                                                   |
 | README のタスク一覧        | `mise.toml` を変えたときに `mise run docs` で再生成する                                                 |
@@ -34,7 +34,7 @@ Claude Code の workflow には、リポジトリの secret `CLAUDE_CODE_OAUTH_T
 
 ## 共通ファイル
 
-設定ファイルなどの共通ファイルは [dope-corp/template](https://github.com/dope-corp/template) にそろえています。`mise run template-diff` で template との差分を確認できます。
+設定ファイルなどの共通ファイルは [dope-corp/template](https://github.com/dope-corp/template) にそろえています。
 
 ## 依存関係の更新
 

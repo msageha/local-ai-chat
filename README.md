@@ -30,15 +30,15 @@ flowchart LR
 mise trust && mise install
 ```
 
-マシンに合わせて起動のタスクを選び、起動したら `mise run ui` で Web UI を開きます。止めるときは `mise run down` を実行します。
-
-| マシン                             | 起動のタスク                                                                        |
-| ---------------------------------- | ----------------------------------------------------------------------------------- |
-| GPU を使わない                     | `mise run up`                                                                       |
-| NVIDIA GPU のあるマシン            | `mise run up:gpu`                                                                   |
-| Apple Silicon の Mac で GPU を使う | 「[Apple Silicon の Mac で GPU を使う](#apple-silicon-の-mac-で-gpu-を使う)」の手順 |
+GPU を使わないなら `mise run up`、NVIDIA GPU のあるマシンなら `mise run up:gpu` で起動します。Apple Silicon の Mac で GPU を使うときは、「[Apple Silicon の Mac で GPU を使う](#apple-silicon-の-mac-で-gpu-を使う)」の手順で起動します。止めるときは `mise run down` を実行します。
 
 起動すると、`ollama/models.txt` に並べたモデルのダウンロード (pull) がバックグラウンドで始まります。ダウンロードしたモデルは、固定した版 (digest) と一致するかを確かめてから、`qwen35-4b-heretic` のような短い名前 (エイリアス) で登録され、Web UI と CLI から使えるようになります。進み具合は `mise run logs` で見られ、`ready: <alias>` と出たモデルが使える状態です。
+
+起動したら、次のものから使います。各タスクの詳細は「[タスク一覧](#タスク一覧)」にあります。
+
+- Web UI: `mise run ui` で開きます (既定では http://localhost:3000)。
+- aider: `mise run code` で、端末からコードを編集します。
+- API: Ollama の API を http://localhost:11434 で使えます (OpenAI 互換の API は `/v1`)。
 
 ### Apple Silicon の Mac で GPU を使う
 
@@ -57,15 +57,6 @@ macOS の Docker のコンテナからは GPU (Metal) を使えません。そ�
 この構成では、`BIND_HOST` に loopback を含むアドレス (`127.0.0.1`・`0.0.0.0`・`::1`・`::` など) だけを使えます。コンテナはホストの loopback を経由してホストの Ollama に接続するためです。
 
 MLX 形式のモデルはこの構成でだけ pull されます。この構成で pull した後に通常の構成へ戻すと、そのモデルは選択肢に残りますが動かないので、使わないなら、`docker compose exec ollama ollama rm inkling2-mini inkling-2-mini:26b-a5b-nvfp4` のように、エイリアスと取得元の名前 (`ollama/models.txt` の 2 列目) を指定して消してください。
-
-## 使い方
-
-- **Web UI**: `mise run ui` で開きます (既定では http://localhost:3000)。チャット画面でモデルを選んで使います。
-- **CLI (aider)**: `mise run code` は git と連携してリポジトリのコードを編集します (変更は自動で commit しません)。`mise run chat` は git 連携とリポジトリの全体像の把握 (repo map) を切った軽い会話用で、こちらもファイルを編集できます。どちらも既定ではこのリポジトリを開くので、ほかのプロジェクトは `MOUNT_DIR=/path/to/project mise run code` のように指定します (相対パスはこのリポジトリの直下が基準です)。
-- **CLI のモデルの切り替え**: `MODEL=goetia mise run chat` のように、その回だけ使うモデルのエイリアスを指定します。既定のモデルは「[設定](#設定)」の `DEFAULT_MODEL` で変えます。
-- **API**: Ollama の API を http://localhost:11434 で使えます (OpenAI 互換の API は `/v1`)。
-
-`chat`・`code`・`shell`・`pull`・`models` のタスクは、起動中のサービスと同じ構成で動きます。先に `up`・`up:gpu`・`up:apple` のどれかで起動しておいてください。
 
 ## 設定
 
@@ -104,23 +95,25 @@ mise は `[env]` の値をシェルの環境変数より優先し、値の中の
 
 <!-- dprint-ignore-start -->
 <!-- mise-tasks -->
-## `chat`
-
-- **Usage:** `chat`
-
-aider でチャットする (環境変数 MODEL にエイリアスを指定するとモデルを切り替えられる)
-
 ## `code`
+
+aider でコードを編集する。aider は git と連携するが、変更を自動では commit しない。
+
+既定ではこのリポジトリを開く。ほかのディレクトリは `MOUNT_DIR=/path/to/project mise run code` のように指定する (相対パスはこのリポジトリの直下が基準)。モデルは `MODEL=goetia mise run code` のように ollama/models.txt のエイリアスで指定し、省略すると設定の `DEFAULT_MODEL` を使う。`--` 以降の引数は aider に渡す (例: `mise run code -- --no-git`)。
+
+先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。
+
 
 - **Usage:** `code`
 
-MOUNT_DIR のコードを aider で編集する (環境変数 MODEL でモデルを切り替え、`--` 以降は aider に渡す)
-
 ## `digests`
 
-- **Usage:** `digests`
+ollama/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)。
 
-ollama/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)
+モデルを追加・変更したときに使う。手順は docs/models.md の「モデルを追加する」にある。既存のモデルの digest は Renovate が更新する。
+
+
+- **Usage:** `digests`
 
 ## `docs`
 
@@ -142,33 +135,27 @@ README.md のタスク一覧を mise.toml と同期する
 
 ## `models`
 
-- **Usage:** `models`
+Ollama に登録済みのモデルを一覧する。
 
-Ollama に登録済みのモデルを一覧する
+先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。
+
+
+- **Usage:** `models`
 
 ## `pull`
 
-- **Usage:** `pull`
+ollama/models.txt のモデルを pull してエイリアスを更新する。
 
-ollama/models.txt のモデルを pull してエイリアスを更新する
+サービスの起動時にも同じ処理が走る。起動したまま models.txt の変更を反映するときに使う。先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。
+
+
+- **Usage:** `pull`
 
 ## `serve`
 
 - **Usage:** `serve`
 
 Apple Silicon の構成で、ホストの Ollama を起動する (`mise run up:apple` の前に別のターミナルで実行し、Ctrl-C で止める)
-
-## `shell`
-
-- **Usage:** `shell`
-
-aider コンテナで bash を起動する
-
-## `template-diff`
-
-- **Usage:** `template-diff`
-
-共通ファイルを dope-corp/template の main と比較する
 
 ## `ui`
 
@@ -180,13 +167,16 @@ Web UI をブラウザで開く
 
 - **Usage:** `up`
 
-GPU を使わずに全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)
+GPU を使わずに全サービスを起動する
 
 ## `up:apple`
 
-- **Usage:** `up:apple`
+Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続して全サービスを起動する。
 
-Apple Silicon の構成で全サービスを起動する (先に別のターミナルで `mise run serve` を実行しておく)
+先に別の端末で `mise run serve` を実行しておく。手順と制約は README の「Apple Silicon の Mac で GPU を使う」にある。
+
+
+- **Usage:** `up:apple`
 
 ## `up:gpu`
 

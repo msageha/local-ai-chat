@@ -11,9 +11,6 @@ jq = "1.8.2"
 shellcheck = "0.11.0"
 zizmor = "1.32.0"
 typos = "1.52.2"
-# dclint は macOS 向けのバイナリを配布していないので npm から入れる。npm の backend が使う node も揃えて pin する
-node = "26.13.1"
-"npm:dclint" = "3.1.0"
 # Apple Silicon の構成 (compose.apple.yaml) でホストに動かす Ollama。MLX は Apple Silicon の macOS でしか動かないので、そこにだけ入れる。
 # compose.yaml の ollama/ollama イメージと同じバージョンにする
 ollama = { version = "0.40.17", os = ["macos/arm64"] }
@@ -44,7 +41,7 @@ COMPOSE_DISABLE_ENV_FILE = "1"
 # DEFAULT_MODEL = "qwen35-4b-heretic:latest"
 
 [tasks.up]
-description = "GPU を使わずに全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)"
+description = "GPU を使わずに全サービスを起動する"
 # 構成は起動のタスクで選ぶので、シェルの COMPOSE_FILE や compose.override.yaml を拾わないよう compose ファイルを明示する (down・logs・ui も同じ)
 run = "docker compose -f compose.yaml up -d"
 
@@ -53,7 +50,10 @@ description = "NVIDIA GPU を ollama に割り当てて全サービスを起動�
 run = "docker compose -f compose.yaml -f compose.gpu.yaml up -d"
 
 [tasks."up:apple"]
-description = "Apple Silicon の構成で全サービスを起動する (先に別のターミナルで `mise run serve` を実行しておく)"
+description = "Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続して全サービスを起動する"
+usage = '''
+long_about "Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続して全サービスを起動する。\n\n先に別の端末で `mise run serve` を実行しておく。手順と制約は README の「Apple Silicon の Mac で GPU を使う」にある。"
+'''
 run = "docker compose -f compose.yaml -f compose.apple.yaml up -d"
 
 [tasks.serve]
@@ -116,66 +116,33 @@ open "$url" 2>/dev/null || xdg-open "$url" 2>/dev/null || echo "$url"
 # Apple Silicon の構成では ollama サービスがプロキシになり ollama コマンドを持たないので、ollama-init のイメージで問い合わせる
 [tasks.models]
 description = "Ollama に登録済みのモデルを一覧する"
+usage = '''
+long_about "Ollama に登録済みのモデルを一覧する。\n\n先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。"
+'''
 run = "scripts/compose-running.sh run --rm --no-deps --entrypoint ollama ollama-init list"
 
 [tasks.pull]
 description = "ollama/models.txt のモデルを pull してエイリアスを更新する"
+usage = '''
+long_about "ollama/models.txt のモデルを pull してエイリアスを更新する。\n\nサービスの起動時にも同じ処理が走る。起動したまま models.txt の変更を反映するときに使う。先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。"
+'''
 run = "scripts/compose-running.sh run --rm --no-deps ollama-init"
 
 [tasks.digests]
 description = "ollama/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)"
+usage = '''
+long_about "ollama/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)。\n\nモデルを追加・変更したときに使う。手順は docs/models.md の「モデルを追加する」にある。既存のモデルの digest は Renovate が更新する。"
+'''
 run = "ollama/update-digests.sh"
 
 # cli はホストの UID/GID で実行し、マウント先に作るファイルの所有者をホストユーザーに揃える
-[tasks.chat]
-description = "aider でチャットする (環境変数 MODEL にエイリアスを指定するとモデルを切り替えられる)"
-run = "scripts/compose-running.sh run --rm --no-deps --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-git --map-tokens 0"
-
 [tasks.code]
-description = "MOUNT_DIR のコードを aider で編集する (環境変数 MODEL でモデルを切り替え、`--` 以降は aider に渡す)"
+description = "aider でコードを編集する (MOUNT_DIR で対象のディレクトリ、MODEL でモデルを指定する)"
+usage = '''
+long_about "aider でコードを編集する。aider は git と連携するが、変更を自動では commit しない。\n\n既定ではこのリポジトリを開く。ほかのディレクトリは `MOUNT_DIR=/path/to/project mise run code` のように指定する (相対パスはこのリポジトリの直下が基準)。モデルは `MODEL=goetia mise run code` のように ollama/models.txt のエイリアスで指定し、省略すると設定の `DEFAULT_MODEL` を使う。`--` 以降の引数は aider に渡す (例: `mise run code -- --no-git`)。\n\n先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。"
+'''
 run = "scripts/compose-running.sh run --rm --no-deps --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-auto-commits --no-dirty-commits"
-
-[tasks.shell]
-description = "aider コンテナで bash を起動する"
-run = "scripts/compose-running.sh run --rm --no-deps --user \"$(id -u):$(id -g)\" --entrypoint bash cli"
 
 [tasks.docs]
 description = "README.md のタスク一覧を mise.toml と同期する"
 run = "mise generate task-docs --inject --output README.md"
-
-# README.md / CODEOWNERS / mise.lock はリポジトリごとに書き換えるので比較しない (CLAUDE.md はこのリポジトリに置かない)
-[tasks.template-diff]
-description = "共通ファイルを dope-corp/template の main と比較する"
-run = '''
-#!/usr/bin/env bash
-set -euo pipefail
-repo="dope-corp/template"
-files=(
-  .editorconfig .gitattributes .gitignore .pre-commit-config.yaml commitlint.config.mjs
-  dprint.json mise.toml renovate.json
-  .github/PULL_REQUEST_TEMPLATE.md
-  .github/ISSUE_TEMPLATE/config.yml .github/ISSUE_TEMPLATE/bug_report.yaml .github/ISSUE_TEMPLATE/feature_request.yaml
-  .github/workflows/ci.yaml .github/workflows/claude.yaml .github/workflows/claude-sweep.yaml
-)
-err="$(mktemp)"
-trap 'rm -f "${err}"' EXIT
-failed=0
-for f in "${files[@]}"; do
-  if ! upstream="$(gh api "repos/${repo}/contents/${f}" -H 'Accept: application/vnd.github.raw+json' 2>"${err}")"; then
-    # 404 は template に無いファイルなので飛ばす。それ以外 (未認証・通信障害・rate limit) は比較できていないので失敗にする
-    if grep -q 'HTTP 404' "${err}"; then
-      echo "!! ${f}: not in ${repo} main (skipped)"
-    else
-      echo "!! ${f}: fetch failed: $(cat "${err}")" >&2
-      failed=1
-    fi
-    continue
-  fi
-  if [[ ! -f "${f}" ]]; then
-    echo "!! ${f}: missing locally"
-    continue
-  fi
-  diff -u --label "template/${f}" --label "${f}" <(printf '%s\n' "${upstream}") "${f}" || true
-done
-exit "${failed}"
-'''
