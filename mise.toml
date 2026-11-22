@@ -28,10 +28,6 @@ lockfile = true
 # 変えるときは行のコメントを外す。手元だけの値と secret は、git 管理外の mise.local.toml の [env] に書く。
 # [env] の値はシェルの環境変数より優先されるので、実行ごとにシェルから渡す変数 (MODEL・MOUNT_DIR) はここに書かない
 [env]
-# NVIDIA GPU を使うなら compose.gpu.yaml を、Apple Silicon の Mac で Ollama をホストで動かすなら compose.apple.yaml を重ねる
-# (README の「Apple Silicon の構成」を参照)
-# COMPOSE_FILE = "compose.yaml:compose.gpu.yaml"
-# COMPOSE_FILE = "compose.yaml:compose.apple.yaml"
 # ポートを bind するホスト側アドレス。同じネットワークに公開するなら 0.0.0.0
 # BIND_HOST = "127.0.0.1"
 # OLLAMA_PORT = "11434"
@@ -47,10 +43,19 @@ lockfile = true
 
 [tasks.up]
 description = "全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)"
-run = "docker compose up -d"
+# COMPOSE_FILE が残っていても使わないよう、compose ファイルを明示する (down・logs・ui も同じ)
+run = "docker compose -f compose.yaml up -d"
+
+[tasks."up:gpu"]
+description = "NVIDIA GPU を ollama に割り当てて全サービスを起動する"
+run = "docker compose -f compose.yaml -f compose.gpu.yaml up -d"
+
+[tasks."up:apple"]
+description = "Apple Silicon の構成で全サービスを起動する (先に別のターミナルで `mise run serve` を実行しておく)"
+run = "docker compose -f compose.yaml -f compose.apple.yaml up -d"
 
 [tasks.serve]
-description = "Apple Silicon の構成で、ホストの Ollama を起動する (`mise run up` の前に別のターミナルで実行し、Ctrl-C で止める)"
+description = "Apple Silicon の構成で、ホストの Ollama を起動する (`mise run up:apple` の前に別のターミナルで実行し、Ctrl-C で止める)"
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
@@ -61,11 +66,7 @@ fi
 # [env] に書いた secret を、長く動き続けるホストの Ollama に引き継がせない
 unset WEBUI_SECRET_KEY
 # bind 先・ポート・Ollama の設定は compose が決めた値を使い、コンテナで動かすときと揃える
-config=$(docker compose config --format json)
-if ! jq -e '.services["ollama-init"].environment.PULL_MLX_MODELS == "1"' <<<"$config" >/dev/null; then
-  echo "set COMPOSE_FILE to compose.yaml:compose.apple.yaml in the [env] of mise.toml or mise.local.toml so the services connect to the host Ollama" >&2
-  exit 1
-fi
+config=$(docker compose -f compose.yaml -f compose.apple.yaml config --format json)
 # compose.apple.yaml の ollama サービスは --to host.docker.internal:<port> へ転送するので、そのポートで待ち受ける
 port=$(jq -r '.services.ollama.command | .[index("--to") + 1]' <<<"$config")
 port=${port##*:}
@@ -96,16 +97,16 @@ exec ollama serve
 
 [tasks.down]
 description = "全サービスを停止する"
-run = "docker compose down"
+run = "docker compose -f compose.yaml down"
 
 [tasks.logs]
 description = "ログを追従表示する"
-run = "docker compose logs -f"
+run = "docker compose -f compose.yaml logs -f"
 
 [tasks.ui]
 description = "Web UI をブラウザで開く"
 run = '''
-port=$(docker compose port open-webui 8080) || { echo "open-webui is not running; run 'mise run up' first" >&2; exit 1; }
+port=$(docker compose -f compose.yaml port open-webui 8080) || { echo "open-webui is not running; start it with 'mise run up', 'mise run up:gpu' or 'mise run up:apple' first" >&2; exit 1; }
 url="http://localhost:${port##*:}"
 open "$url" 2>/dev/null || xdg-open "$url" 2>/dev/null || echo "$url"
 '''
@@ -113,11 +114,11 @@ open "$url" 2>/dev/null || xdg-open "$url" 2>/dev/null || echo "$url"
 # Apple Silicon の構成では ollama サービスがプロキシになり ollama コマンドを持たないので、ollama-init のイメージで問い合わせる
 [tasks.models]
 description = "Ollama に登録済みのモデルを一覧する"
-run = "docker compose run --rm --no-deps --entrypoint ollama ollama-init list"
+run = "scripts/compose-running.sh run --rm --no-deps --entrypoint ollama ollama-init list"
 
 [tasks.pull]
 description = "ollama/models.txt のモデルを pull してエイリアスを更新する"
-run = "docker compose run --rm ollama-init"
+run = "scripts/compose-running.sh run --rm --no-deps ollama-init"
 
 [tasks.digests]
 description = "ollama/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)"
@@ -126,15 +127,15 @@ run = "ollama/update-digests.sh"
 # cli はホストの UID/GID で実行し、マウント先に作るファイルの所有者をホストユーザーに揃える
 [tasks.chat]
 description = "aider でチャットする (環境変数 MODEL にエイリアスを指定するとモデルを切り替えられる)"
-run = "docker compose run --rm --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-git --map-tokens 0"
+run = "scripts/compose-running.sh run --rm --no-deps --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-git --map-tokens 0"
 
 [tasks.code]
 description = "MOUNT_DIR のコードを aider で編集する (環境変数 MODEL でモデルを切り替え、`--` 以降は aider に渡す)"
-run = "docker compose run --rm --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-auto-commits --no-dirty-commits"
+run = "scripts/compose-running.sh run --rm --no-deps --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-auto-commits --no-dirty-commits"
 
 [tasks.shell]
 description = "aider コンテナで bash を起動する"
-run = "docker compose run --rm --user \"$(id -u):$(id -g)\" --entrypoint bash cli"
+run = "scripts/compose-running.sh run --rm --no-deps --user \"$(id -u):$(id -g)\" --entrypoint bash cli"
 
 [tasks.docs]
 description = "README.md のタスク一覧を mise.toml と同期する"

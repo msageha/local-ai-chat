@@ -19,10 +19,15 @@
 !/ollama/update-digests.sh
 !/ollama/check-versions.sh
 
+!/scripts/
+!/scripts/compose-running.sh
+
 !/.gitignore
 !/.gitattributes
 !/.editorconfig
 !/README.md
+!/docs/
+!/docs/*.md
 !/compose.yaml
 !/compose.gpu.yaml
 !/compose.apple.yaml
