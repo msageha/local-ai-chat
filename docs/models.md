@@ -4,10 +4,12 @@
 
 ## 用語
 
-- **abliterated**: 拒否に関わる方向を重みから取り除いたモデル。Heretic・Derestricted などのツールで処理します。配布元のモデルカードかタグに abliteration (Heretic・Derestricted を含む) で処理したとあれば、`uncensored` のタグが併記されていても abliterated に分類します。
-- **uncensored**: 追加学習や merge で拒否を減らしたモデル。
-- **Heretic**: abliteration のツール。エイリアスの `heretic` は、このツールで処理したモデルを指します。
-- **thinking**: 応答の前に推論を書き出すモード。Qwen3.5 系と Gemma 4 系は、Ollama で `think` を指定しないと有効になり、`think: false` で無効にできます。
+| 用語        | 意味                                                                                                                                                                                                                                                |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| abliterated | 拒否に関わる方向を重みから取り除いたモデル。Heretic・Derestricted などのツールで処理する。配布元のモデルカードかタグに abliteration (Heretic・Derestricted を含む) で処理したとあれば、`uncensored` のタグが併記されていても abliterated に分類する |
+| uncensored  | 追加学習や merge で拒否を減らしたモデル                                                                                                                                                                                                             |
+| Heretic     | abliteration のツール。エイリアスの `heretic` は、このツールで処理したモデルを指す                                                                                                                                                                  |
+| thinking    | 応答の前に推論を書き出すモード。Qwen3.5 系と Gemma 4 系は、Ollama で `think` を指定しないと有効になり、`think: false` で無効にできる                                                                                                                |
 
 ## モデル一覧
 
@@ -28,141 +30,128 @@
 | `assistant-pepe`     | Meta Llama 3.1 70B               | Dense 70B                           | 128K         | ~43GB  | 最も性能の高い uncensored (36B 超〜125B)                        | Apple Silicon 64GB+ / NVIDIA 48GB+  |
 | `llama4`             | Meta Llama 4 Scout               | MoE (総109B / 実効17B / 16 experts) | 10M          | ~67GB  | 1M トークンを超える長文・画像入力                               | Apple Silicon 96GB+ / NVIDIA 80GB+  |
 
-- **構成とコンテキスト**: MoE の「総」は全パラメータ数、「実効」は 1 トークンの生成で使うパラメータ数です。コンテキストは、公称の上限のトークン数です。
-- **サイズ**: Q4 量子化でのダウンロード量で、画像入力用の projector を含みます。全モデルで約 360GB、Apple Silicon の構成では `mlx` を付けたモデルの分が加わって約 380GB です。
-- **メモリの目安**: Apple Silicon はホストの搭載メモリ、NVIDIA は GPU の VRAM の目安です。実行時はサイズに KV cache の分が加わります。Ollama をコンテナで動かす構成 (Apple Silicon の構成以外) では、Docker Desktop の VM にもそれだけのメモリを割り当てます (Docker Desktop の既定はホストの 50%)。
-- **pull の順序**: `ollama/models.txt` の上から順に pull します。既定のモデル `qwen35-4b-heretic` を先頭に置いています。
-- **エイリアス**: Ollama には `<alias>:latest` の名前で登録されます。
+| 項目         | 説明                                                                                                                                                                                                                                                                 |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 構成         | MoE の「総」は全パラメータ数、「実効」は 1 トークンの生成で使うパラメータ数                                                                                                                                                                                          |
+| コンテキスト | 公称の上限のトークン数                                                                                                                                                                                                                                               |
+| サイズ       | Q4 量子化でのダウンロード量で、画像入力用の projector を含む。全モデルで約 360GB、Apple Silicon の構成では `mlx` を付けたモデルの分が加わって約 380GB                                                                                                                |
+| メモリの目安 | Apple Silicon はホストの搭載メモリ、NVIDIA は GPU の VRAM の目安。実行時はサイズに KV cache の分が加わる。Ollama をコンテナで動かす構成 (Apple Silicon の構成以外) では、Docker Desktop の VM にもそれだけのメモリを割り当てる (Docker Desktop の既定はホストの 50%) |
+| pull の順序  | `ollama/models.txt` の上から順。既定のモデル `qwen35-4b-heretic` を先頭に置いている                                                                                                                                                                                  |
+| エイリアス   | Ollama には `<alias>:latest` の名前で登録される                                                                                                                                                                                                                      |
 
 ## モデルごとの詳細
 
-各モデルの「選んだ理由」にある指標 (UGI・NatInt など) は、「[選定基準](#選定基準)」で説明します。
+選んだ理由にある指標 (UGI・NatInt など) は、「[選定基準](#選定基準)」で説明します。
 
-### `qwen35-4b-heretic` (既定のモデル)
+| エイリアス           | 処理                                         | 選んだ理由                                                                     | 画像入力                          | ライセンス                                                                      |
+| -------------------- | -------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------- |
+| `qwen35-4b-heretic`  | Heretic で abliteration                      | 10B 以下で UGI が 1 位                                                         | 対応                              | Apache 2.0                                                                      |
+| `qwen35-9b-heretic`  | Heretic で abliteration                      | 10B 以下で NatInt が 1 位                                                      | 対応                              | Apache 2.0                                                                      |
+| `gemma4-31b-heretic` | coder3101 が Heretic で abliteration         | 36B 以下で UGI が 1 位 (65.69)                                                 | 非対応 (GGUF に projector が無い) | Apache 2.0                                                                      |
+| `qwen35-27b-heretic` | Heretic で abliteration                      | 36B 以下で Textbook が 1 位                                                    | 対応                              | Apache 2.0                                                                      |
+| `goetia`             | Naphula が merge し、Heretic で abliteration | 36B 以下で Writing が 1 位 (47.87)                                             | 非対応 (GGUF に projector が無い) | Apache 2.0                                                                      |
+| `qwen38`             | HauhauCS が拒否を減らした (手法の記載なし)   | ベースが公式の値で前世代を上回る                                               | projector も pull されるが未検証  | Apache 2.0                                                                      |
+| `inkling2-mini`      | なし (公式モデル)                            | Apple Silicon の構成のコーディング枠                                           | 対応                              | Apache 2.0                                                                      |
+| `qwen38-cyber`       | philbert440 が abliteration                  | ベースの Terminal-Bench 2.1 が 36B 以下で 1 位 (73.0)                          | 対応                              | Apache 2.0                                                                      |
+| `ripple-abliterated` | 0xKitkat が abliteration                     | ベースの Terminal-Bench 2.1 が、公式の値がある収録モデルのベースで 1 位 (80.5) | 非対応                            | Apache 2.0                                                                      |
+| `gemma4-26b-heretic` | llmfan46 が Heretic で abliteration          | 36B 以下の abliterated で NatInt が 1 位 (37.3)                                | 対応                              | Apache 2.0                                                                      |
+| `xortron-large`      | darkc0de が Heretic で abliteration          | 36B 超〜125B で NatInt と UGI がともに 1 位 (UGI 66.16)                        | 非対応                            | 配布元は WTFPL と表記 (派生元の Mistral Large 2411 は Mistral Research License) |
+| `qwen35-queen`       | aifeifei798 が追加学習                       | 36B 以下の uncensored で NatInt が 1 位                                        | 対応                              | Apache 2.0                                                                      |
+| `assistant-pepe`     | SicariusSicariiStuff が追加学習              | 125B 以下の uncensored で NatInt が 1 位                                       | 非対応                            | Llama 3.1 Community License                                                     |
+| `llama4`             | なし (Meta 公式)                             | 公称 10M トークンのコンテキストを持つ                                          | 対応                              | Llama 4 Community License                                                       |
 
-Qwen3.5 4B を Heretic で abliteration したモデルです。10B 以下で UGI が最も高いので選びました。
-
-- Ollama の tag: `hf.co/mradermacher/Qwen3.5-4B-SOMPOA-heresy-v2-GGUF:Q4_K_M`
-- 画像入力: 対応
-- ライセンス: Apache 2.0
-
-### `qwen35-9b-heretic`
-
-Qwen3.5 9B を Heretic で abliteration したモデルです。10B 以下で NatInt が最も高いので選びました。
-
-- Ollama の tag: `hf.co/mradermacher/Qwen3.5-9B-heretic-v2-GGUF:Q4_K_M`
-- 画像入力: 対応
-- ライセンス: Apache 2.0
+| エイリアス           | Ollama の tag                                                                                                               |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `qwen35-4b-heretic`  | `hf.co/mradermacher/Qwen3.5-4B-SOMPOA-heresy-v2-GGUF:Q4_K_M`                                                                |
+| `qwen35-9b-heretic`  | `hf.co/mradermacher/Qwen3.5-9B-heretic-v2-GGUF:Q4_K_M`                                                                      |
+| `gemma4-31b-heretic` | `hf.co/mradermacher/gemma-4-31B-it-heretic-GGUF:Q4_K_M`                                                                     |
+| `qwen35-27b-heretic` | `hf.co/llmfan46/Qwen3.5-27B-uncensored-heretic-v1-GGUF:Q4_K_M`                                                              |
+| `goetia`             | `hf.co/mradermacher/Goetia-26B-A4B-v1.3-Absolute-Heretic-ARA-GGUF:Q4_K_M`                                                   |
+| `qwen38`             | `hf.co/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF:Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf` |
+| `inkling2-mini`      | `inkling-2-mini:26b-a5b-nvfp4` (MLX 形式)                                                                                   |
+| `qwen38-cyber`       | `hf.co/philbert440/Qwen3.8-27B-Uncensored-Cyber-GGUF:Q4_K_M`                                                                |
+| `ripple-abliterated` | `hf.co/0xKitkat/Ripple-65B-Preview-abliterated-GGUF:Q4_K_M`                                                                 |
+| `gemma4-26b-heretic` | `hf.co/llmfan46/gemma-4-26B-A4B-it-uncensored-heretic-GGUF:Q4_K_M`                                                          |
+| `xortron-large`      | `hf.co/mradermacher/XORTRON.CriminalComputing.LARGE.2026.3-GGUF:Q4_K_M`                                                     |
+| `qwen35-queen`       | `hf.co/mradermacher/Qwen3.5-Queen-27B-GGUF:Q4_K_M`                                                                          |
+| `assistant-pepe`     | `hf.co/SicariusSicariiStuff/Assistant_Pepe_70B_GGUF:Q4_K_M`                                                                 |
+| `llama4`             | `llama4:17b-scout-16e-instruct-q4_K_M`                                                                                      |
 
 ### `gemma4-31b-heretic`
 
-`google/gemma-4-31B-it` を coder3101 が Heretic で abliteration したモデルです。36B 以下で UGI が最も高い (65.69) ので選びました。もう 1 つの指標の Hazardous では、同じ Gemma 4 31B を llmfan46 が処理した版が 1 位 (8.2) で、このモデルは 7.6 です。
-
-- Ollama の tag: `hf.co/mradermacher/gemma-4-31B-it-heretic-GGUF:Q4_K_M`
-- 画像入力: 非対応 (GGUF に projector が無い)
-- ライセンス: Apache 2.0
+ベースは `google/gemma-4-31B-it` です。もう 1 つの指標の Hazardous では、同じ Gemma 4 31B を llmfan46 が処理した版が 1 位 (8.2) で、このモデルは 7.6 です。
 
 ### `qwen35-27b-heretic`
 
-Qwen3.5 27B を Heretic で abliteration したモデルで、UGI Leaderboard 上の名前は `llmfan46/Qwen3.5-27B-heretic-v3` です。36B 以下で Textbook が最も高いので選びました。
-
-- Ollama の tag: `hf.co/llmfan46/Qwen3.5-27B-uncensored-heretic-v1-GGUF:Q4_K_M`
-- 画像入力: 対応
-- ライセンス: Apache 2.0
+UGI Leaderboard 上の名前は `llmfan46/Qwen3.5-27B-heretic-v3` です。
 
 ### `goetia`
 
-Gemma 4 26B-A4B 系の創作向けモデル (StyleTune・Pantheon など) を Naphula が mergekit で合成し、Heretic で abliteration したモデルです。36B 以下で Writing が最も高い (47.87) ので選びました。
-
-- Ollama の tag: `hf.co/mradermacher/Goetia-26B-A4B-v1.3-Absolute-Heretic-ARA-GGUF:Q4_K_M`
-- 画像入力: 非対応 (GGUF に projector が無い)
-- ライセンス: Apache 2.0
+Gemma 4 26B-A4B 系の創作向けモデル (StyleTune・Pantheon など) を mergekit で合成しています。
 
 ### `qwen38`
 
-Qwen3.8 27B をベースに、HauhauCS が拒否を減らした "Aggressive" 版です。配布元は、拒否率を最小化して直接的に回答すると説明しており、手法は書かれていません。ベースの Qwen3.8-27B は公式の値で SWE-bench Pro 61.7・LiveCodeBench v6 90.3 と、前世代の Qwen3.6-27B (53.5・83.9) を上回るので、コーディング用に選びました。
+Qwen3.8 27B をベースにした "Aggressive" 版で、配布元は、拒否率を最小化して直接的に回答すると説明しています。
 
-量子化は imatrix を使う独自の Q4_K_P (18GB) で、同じサイズの標準の量子化より品質の劣化が小さくなります。GGUF には multi-token prediction (MTP) 用のヘッドも入っています。
+| 項目             | Qwen3.8-27B (ベース、公式の値) | Qwen3.6-27B (前世代) |
+| ---------------- | ------------------------------ | -------------------- |
+| SWE-bench Pro    | 61.7                           | 53.5                 |
+| LiveCodeBench v6 | 90.3                           | 83.9                 |
 
-- Ollama の tag: `hf.co/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF:Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf`
-- 画像入力: projector (mmproj) も pull されるが、動作は未検証
-- ライセンス: Apache 2.0
+- 量子化: imatrix を使う独自の Q4_K_P (18GB) で、同じサイズの標準の量子化より品質の劣化が小さくなります。
+- GGUF には multi-token prediction (MTP) 用のヘッドも入っています。
 - 注意: Hugging Face の Ollama 互換のエンドポイントは K_P を量子化名として認識しないので、tag には GGUF のファイル名を指定しています。MTP のヘッドも非標準で、Ollama の版によっては読み込みに失敗します。そのときは、同世代の abliterated 版 `huihui_ai/Qwen3.8-abliterated:27b` (18GB) への差し替えを検討します。
 
 ### `inkling2-mini`
 
-Thinking Machines の公式モデルで、拒否を減らす処理はしていません。Ollama の library には MLX 形式の tag しか無く、Ollama 0.40.17 はこのモデルを Apple Silicon の構成でしか実行できないので、その構成でだけ pull します (Hugging Face には GGUF もあります)。公式の比較では Terminal-Bench 2.1 が 71.6、DeepSWE 1.1 が 48.2 で (`qwen38` のベースの Qwen3.8-27B は 73.0・42.2)、実効パラメータは 5.4B の MoE です。thinking は既定で有効で、Ollama の `think` で切り替えます。
+Thinking Machines の公式モデルで、拒否を減らす処理はしていません。Ollama の library には MLX 形式の tag しか無く、Ollama 0.40.17 はこのモデルを Apple Silicon の構成でしか実行できないので、その構成でだけ pull します (Hugging Face には GGUF もあります)。実効パラメータは 5.4B の MoE です。thinking は既定で有効で、Ollama の `think` で切り替えます。
 
-- Ollama の tag: `inkling-2-mini:26b-a5b-nvfp4` (MLX 形式)
-- 画像入力: 対応
-- ライセンス: Apache 2.0
+| 指標 (公式の比較)  | `inkling2-mini` | Qwen3.8-27B (`qwen38` のベース) |
+| ------------------ | --------------- | ------------------------------- |
+| Terminal-Bench 2.1 | 71.6            | 73.0                            |
+| DeepSWE 1.1        | 48.2            | 42.2                            |
 
 ### `qwen38-cyber`
 
-`Qwen/Qwen3.8-27B` を philbert440 が、攻撃的なセキュリティの質問に答えるよう abliteration したモデルです。配布元の評価では、攻撃的なサイバー系のプロンプト 100 件のすべてに回答しています。ベースの Qwen3.8-27B は Terminal-Bench 2.1 が 73.0 で、36B 以下で最も高いので、ペンテスト用に選びました。thinking は GGUF の chat template の既定で有効です。
-
-- Ollama の tag: `hf.co/philbert440/Qwen3.8-27B-Uncensored-Cyber-GGUF:Q4_K_M`
-- 画像入力: 対応
-- ライセンス: Apache 2.0
+`Qwen/Qwen3.8-27B` を、攻撃的なセキュリティの質問に答えるよう abliteration したモデルです。配布元の評価では、攻撃的なサイバー系のプロンプト 100 件のすべてに回答しています。thinking は GGUF の chat template の既定で有効です。
 
 ### `ripple-abliterated`
 
-agentic coding 向けの Dense 65B モデル `ricursiveAI/Ripple-65B-Preview` を、0xKitkat が abliteration したモデルです。ベースの Terminal-Bench 2.1 は 80.5 で、収録モデルのベースのうち公式の値があるものの中で最も高いので、大型のペンテスト用に選びました。
+agentic coding 向けの Dense 65B モデル `ricursiveAI/Ripple-65B-Preview` を abliteration したモデルです。
 
-配布元の評価では、有害なプロンプト 48 件のうち拒否は 1 件でした。推論・コード・ツール呼び出しの小規模な機能テストでは元のモデルとほぼ差が無く、エージェントとしての評価はしていません。同じ Ripple を abliteration した dealignai 版は MMLU が 4.4 ポイント下がると計測されているので、低下を示す計測の無いこちらを選びました。
-
-応答の前に `<think>` で推論を書くモデルで、chat template に thinking の切り替えはありません。公称のコンテキスト長は 1M トークンです (GGUF のメタデータの値は 2M)。長いコンテキストの指定方法は [`llama4`](#llama4) と同じです。
-
-- Ollama の tag: `hf.co/0xKitkat/Ripple-65B-Preview-abliterated-GGUF:Q4_K_M`
-- 画像入力: 非対応
-- ライセンス: Apache 2.0
+- 配布元の評価: 有害なプロンプト 48 件のうち拒否は 1 件。推論・コード・ツール呼び出しの小規模な機能テストでは元のモデルとほぼ差が無く、エージェントとしての評価はしていない。
+- 同じ Ripple を abliteration した dealignai 版は MMLU が 4.4 ポイント下がると計測されているので、低下を示す計測の無いこちらを選びました。
+- 応答の前に `<think>` で推論を書くモデルで、chat template に thinking の切り替えはありません。
+- 公称のコンテキスト長は 1M トークンです (GGUF のメタデータの値は 2M)。長いコンテキストの指定方法は [`llama4`](#llama4) と同じです。
 - 注意: 独自の `ricursive` アーキテクチャで、Ollama 0.40.16 以降が必要です。
 
 ### `gemma4-26b-heretic`
 
-`google/gemma-4-26B-A4B-it` を llmfan46 が Heretic で abliteration したモデルです。36B 以下の abliterated で NatInt が最も高い (37.3) ので選びました。
-
-- Ollama の tag: `hf.co/llmfan46/gemma-4-26B-A4B-it-uncensored-heretic-GGUF:Q4_K_M`
-- 画像入力: 対応
-- ライセンス: Apache 2.0
+ベースは `google/gemma-4-26B-A4B-it` です。
 
 ### `xortron-large`
 
-`mistralai/Mistral-Large-Instruct-2411` を darkc0de が Heretic で abliteration したモデルです。36B を超え 125B 以下のモデルで NatInt と UGI がともに最も高いので選びました。UGI の 66.16 は収録モデルの中でも最も高い値です。Dense 123B なので、同じメモリに載る MoE より生成が遅くなります。
-
-- Ollama の tag: `hf.co/mradermacher/XORTRON.CriminalComputing.LARGE.2026.3-GGUF:Q4_K_M`
-- 画像入力: 非対応
-- ライセンス: 配布元は WTFPL と表記 (派生元の Mistral Large 2411 は Mistral Research License)
+ベースは `mistralai/Mistral-Large-Instruct-2411` です。UGI の 66.16 は収録モデルの中でも最も高い値です。Dense 123B なので、同じメモリに載る MoE より生成が遅くなります。
 
 ### `qwen35-queen`
 
-`Qwen/Qwen3.5-27B` を aifeifei798 が追加学習したモデルで、abliteration ではなく学習で拒否を減らしています。配布元は、ロールプレイと複数の persona を演じることを特徴に挙げています。36B 以下の uncensored で NatInt が最も高いので選びました。
-
-- Ollama の tag: `hf.co/mradermacher/Qwen3.5-Queen-27B-GGUF:Q4_K_M`
-- 画像入力: 対応
-- ライセンス: Apache 2.0
+`Qwen/Qwen3.5-27B` を追加学習したモデルで、abliteration ではなく学習で拒否を減らしています。配布元は、ロールプレイと複数の persona を演じることを特徴に挙げています。
 
 ### `assistant-pepe`
 
-`meta-llama/Llama-3.1-70B-Instruct` を SicariusSicariiStuff が 4chan のデータで追加学習したモデルです。システムプロンプトが無くても使えるように学習されています。125B 以下の uncensored で NatInt が最も高いので選びました。
-
-- Ollama の tag: `hf.co/SicariusSicariiStuff/Assistant_Pepe_70B_GGUF:Q4_K_M`
-- 画像入力: 非対応
-- ライセンス: Llama 3.1 Community License
+`meta-llama/Llama-3.1-70B-Instruct` を 4chan のデータで追加学習したモデルです。システムプロンプトが無くても使えるように学習されています。
 
 ### `llama4`
 
 Meta 公式の Llama 4 Scout で、拒否を減らす処理はしていません。収録モデルで最も長い、公称 10M トークンのコンテキストを持ちます。総パラメータが 109B あるので、Q4 でも 67GB を使います。
 
-- Ollama の tag: `llama4:17b-scout-16e-instruct-q4_K_M`
-- 画像入力: 対応
-- ライセンス: Llama 4 Community License
-
 Ollama は、リクエストで `num_ctx` を指定しないと、VRAM の量に応じて 4,096・32,768・262,144 トークンのどれかのコンテキストで動かします。それより長い入力を扱うには、次のどれかでコンテキスト長を指定します。実際に扱える長さは、KV cache が収まるメモリの量で決まります。
 
-- Ollama の API (`/api/chat`) の `options.num_ctx`
-- Web UI のチャットの詳細設定のコンテキスト長
-- OpenAI 互換の API (`/v1`) はこの指定を受け付けないので、`PARAMETER num_ctx` を書いた Modelfile で別のモデルを作る
+| 使う経路                    | コンテキスト長の指定                                                              |
+| --------------------------- | --------------------------------------------------------------------------------- |
+| Ollama の API (`/api/chat`) | `options.num_ctx`                                                                 |
+| Web UI                      | チャットの詳細設定のコンテキスト長                                                |
+| OpenAI 互換の API (`/v1`)   | 指定を受け付けないので、`PARAMETER num_ctx` を書いた Modelfile で別のモデルを作る |
 
 ## 選定基準
 
@@ -226,10 +215,12 @@ Apple Silicon の構成の枠は Ollama の library の MLX 形式の tag から
 2. `mise run digests` を実行し、その行に digest を書き込みます。行は `<alias> <source> sha256:<64 桁の 16 進数> [mlx]` の形になります。
 3. サービスを起動した状態で `mise run pull` を実行します。
 
-`<source>` は、次のどちらかの形で書きます。
+`<source>` は、取得元に合わせて次の形で書きます。
 
-- `registry.ollama.ai/<namespace>/<model>:<tag>` (公式モデルの namespace は `library`)
-- `hf.co/<user>/<repo>:<tag>`
+| 取得元             | `<source>` の形                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| Ollama の registry | `registry.ollama.ai/<namespace>/<model>:<tag>` (公式モデルの namespace は `library`) |
+| Hugging Face       | `hf.co/<user>/<repo>:<tag>`                                                          |
 
 tag には次の制約があります。
 
@@ -238,6 +229,15 @@ tag には次の制約があります。
 
 ### digest の照合
 
-Ollama は digest を指定して pull できません。そのため、tag で pull した後に manifest の sha256 を `ollama/models.txt` の digest と照合し、一致したときだけエイリアスを更新します。`mise run models` が表示する ID は、この digest の先頭 12 文字です。
+Ollama は digest を指定して pull できません。そのため、tag で pull した後に manifest の sha256 を `ollama/models.txt` の digest と照合します。`mise run models` が表示する ID は、この digest の先頭 12 文字です。
 
-上流で tag の内容が更新されると、Renovate が digest を更新するまで ([依存関係の更新](development.md#依存関係の更新)) そのモデルは照合に失敗し、エイリアスは前の版のまま残ります。照合や pull に失敗したモデルは警告を出して飛ばされ、`mise run pull` は最後に 0 以外の終了コードで終わります。
+```mermaid
+flowchart LR
+  pull["tag で pull"] -- 失敗 --> warn
+  pull --> check{"manifest の sha256 が<br>models.txt の digest と一致?"}
+  check -- する --> alias["エイリアスを更新"]
+  check -- しない --> warn["警告を出して飛ばす<br>(エイリアスは前の版のまま)"]
+  warn --> exit["mise run pull は最後に<br>0 以外の終了コードで終わる"]
+```
+
+上流で tag の内容が更新されると、Renovate が digest を更新するまで ([依存関係の更新](development.md#依存関係の更新)) そのモデルは照合に失敗します。

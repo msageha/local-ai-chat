@@ -57,7 +57,7 @@ long_about "Apple Silicon の Mac で、GPU を使えるホストの Ollama に�
 run = "docker compose -f compose.yaml -f compose.apple.yaml up -d"
 
 [tasks.serve]
-description = "Apple Silicon の構成で、ホストの Ollama を起動する (`mise run up:apple` の前に別のターミナルで実行し、Ctrl-C で止める)"
+description = "Apple Silicon の構成で、ホストの Ollama を起動する (`mise run up:apple` の前に別の端末で実行し、Ctrl-C で止める)"
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
