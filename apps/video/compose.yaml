@@ -1,0 +1,21 @@
+# 動画を生成する ComfyUI。NVIDIA GPU で動かす。Apple Silicon では ComfyUI をホスト (`mise run serve video`) で動かし、
+# ここからはモデルを取得する comfyui-init だけを起動する (`mise run up video apple`)
+name: local-ai-chat-video
+
+services:
+  comfyui:
+    extends:
+      file: ../shared/comfyui/compose.yaml
+      service: comfyui
+    volumes:
+      - ../../data/video/comfyui:/data
+    ports:
+      - "${BIND_HOST:-127.0.0.1}:${VIDEO_PORT:-8189}:8188"
+
+  comfyui-init:
+    extends:
+      file: ../shared/comfyui/compose.yaml
+      service: comfyui-init
+    volumes:
+      - .:/config:ro
+      - ../../data/video/comfyui:/data

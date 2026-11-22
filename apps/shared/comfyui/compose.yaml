@@ -1,0 +1,43 @@
+# image・video のアプリが extends で使う ComfyUI のサービス定義。これだけでは起動しない。
+# アプリごとに、データの置き場 (/data へのマウント)・公開するポート・models.txt を足す
+services:
+  comfyui:
+    build:
+      context: .
+      args:
+        # ホストで動かすとき (apps/shared/comfyui/serve.sh) もこの版を入れる
+        COMFYUI_VERSION: v0.46.0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: [
+        "CMD",
+        "python",
+        "-c",
+        "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8188/system_stats')",
+      ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # models.txt のモデルを取得する。起動ごとに再実行され、失敗したファイルがあると非 0 で終了する。
+  # ComfyUI はこの完了を待たず、置かれたモデルから使える
+  comfyui-init:
+    image: curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93
+    # イメージの既定のユーザー (curl_user) では、Docker が root で作るデータの置き場に書けない
+    user: "0:0"
+    entrypoint: [
+      "sh",
+      "/comfyui/pull-models.sh",
+      "/config/models.txt",
+      "/data/models",
+    ]
+    volumes:
+      - .:/comfyui:ro

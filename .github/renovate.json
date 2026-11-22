@@ -60,9 +60,9 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "ollama/models.txt のモデル行の digest を更新する。source は tag を含めて package 名にする (tag ごとに別の digest を引くため)",
+      "description": "apps/text/models.txt のモデル行の digest を更新する。source は tag を含めて package 名にする (tag ごとに別の digest を引くため)",
       "managerFilePatterns": [
-        "/(^|/)ollama/models\\.txt$/"
+        "/(^|/)apps/text/models\\.txt$/"
       ],
       "matchStrings": [
         "(?:^|\\n)[ \\t]*[^#\\s]\\S*[ \\t]+(?<depName>\\S+/\\S+:\\S+)[ \\t]+(?<currentDigest>sha256:[a-f0-9]{64})\\b"
@@ -73,9 +73,22 @@
     },
     {
       "customType": "regex",
-      "description": "dprint.json の公式 plugin (dprint/dprint-plugin-*) の WASM URL を更新する。@ 以降の sha256 は github-release-attachments datasource が release asset のハッシュから追従させる",
+      "description": "apps/shared/comfyui/compose.yaml の build args にある ComfyUI の版を更新する。コンテナとホスト (apps/shared/comfyui/serve.sh) の両方がこの値を使う",
       "managerFilePatterns": [
-        "/(^|/)dprint\\.json$/"
+        "/(^|/)apps/shared/comfyui/compose\\.yaml$/"
+      ],
+      "matchStrings": [
+        "COMFYUI_VERSION:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "Comfy-Org/ComfyUI",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": ".dprint.json の公式 plugin (dprint/dprint-plugin-*) の WASM URL を更新する。@ 以降の sha256 は github-release-attachments datasource が release asset のハッシュから追従させる",
+      "managerFilePatterns": [
+        "/(^|/)\\.dprint\\.json$/"
       ],
       "matchStrings": [
         "https://plugins\\.dprint\\.dev/(?<depName>[a-z0-9-]+)-(?<currentValue>\\d+\\.\\d+\\.\\d+)\\.wasm(?:@(?<currentDigest>[a-f0-9]{64}))?"
@@ -86,9 +99,9 @@
     },
     {
       "customType": "regex",
-      "description": "dprint.json の g-plane plugin の WASM URL を更新する。tag に v が付くので currentValue に含めて照合する",
+      "description": ".dprint.json の g-plane plugin の WASM URL を更新する。tag に v が付くので currentValue に含めて照合する",
       "managerFilePatterns": [
-        "/(^|/)dprint\\.json$/"
+        "/(^|/)\\.dprint\\.json$/"
       ],
       "matchStrings": [
         "https://plugins\\.dprint\\.dev/g-plane/(?<depName>[a-z0-9_-]+)-(?<currentValue>v\\d+\\.\\d+\\.\\d+)\\.wasm(?:@(?<currentDigest>[a-f0-9]{64}))?"

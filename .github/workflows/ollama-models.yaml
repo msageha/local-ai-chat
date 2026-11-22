@@ -1,6 +1,6 @@
 name: Ollama model digests
 
-# ollama/models.txt の各 source の tag が今指す manifest の sha256 を求め、ollama-digests ブランチの digests.json に置く。
+# apps/text/models.txt の各 source の tag が今指す manifest の sha256 を求め、ollama-digests ブランチの digests.json に置く。
 # Renovate はこれを custom datasource として読み、models.txt の digest を更新する PR を作る。
 # Ollama 形式のレジストリは manifest の digest を返さず、Renovate では計算できないため、この workflow が計算を担う。
 on:
@@ -34,9 +34,9 @@ jobs:
       # 公開済みの新しい digest が巻き戻る
       - name: Resolve digests
         run: |
-          ollama/update-digests.sh
+          apps/text/update-digests.sh
           jq -Rn '[inputs | sub("^\\s+"; "") | select(test("^(#|$)") | not) | [splits("\\s+")] | {key: .[1], value: .[2]}] | from_entries' \
-            ollama/models.txt > "$RUNNER_TEMP/digests.json"
+            apps/text/models.txt > "$RUNNER_TEMP/digests.json"
           cat "$RUNNER_TEMP/digests.json"
 
       - name: Publish to the data branch

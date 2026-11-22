@@ -1,0 +1,8 @@
+# ComfyUI に置くモデル。書式: <directory> <owner>/<repo> <commit sha> <path> <sha256>
+# <directory> は ComfyUI の models/ の下の置き場、<path> は Hugging Face のリポジトリ内のパス、<sha256> はファイルの sha256。
+# ファイル名は ComfyUI に同梱の workflow テンプレートが参照する名前に合わせる
+
+# Wan 2.2 TI2V 5B (テンプレート「Wan 2.2 5B Video Generation」)
+diffusion_models Comfy-Org/Wan-2.2 5df3a4a3ed0628002308022198249dbbbd045d09 split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors 456f901338bd9eadbded3828b819109a9b68e8a525ca5cf8d0049a69fcfeca1e
+text_encoders Comfy-Org/Wan-2.2 5df3a4a3ed0628002308022198249dbbbd045d09 split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68
+vae Comfy-Org/Wan-2.2 5df3a4a3ed0628002308022198249dbbbd045d09 split_files/vae/wan2.2_vae.safetensors e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156
