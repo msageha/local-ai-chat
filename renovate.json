@@ -49,7 +49,7 @@
       "automergeType": "pr"
     },
     {
-      "description": "lock file maintenance (mise.lock の再解決) は mise.toml で固定した版の URL と checksum だけを更新するので、CI が green なら自動 merge する",
+      "description": "lock file maintenance (mise.lock の再解決) は mise.toml で固定した版を変えず、その版の配布物の情報 (URL・checksum など) だけを更新するので、CI が green なら自動 merge する",
       "matchUpdateTypes": [
         "lockFileMaintenance"
       ],

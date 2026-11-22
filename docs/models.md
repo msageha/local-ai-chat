@@ -60,22 +60,7 @@
 | `assistant-pepe`     | SicariusSicariiStuff が追加学習              | 125B 以下の uncensored で NatInt が 1 位                                       | 非対応                            | Llama 3.1 Community License                                                     |
 | `llama4`             | なし (Meta 公式)                             | 公称 10M トークンのコンテキストを持つ                                          | 対応                              | Llama 4 Community License                                                       |
 
-| エイリアス           | Ollama の tag                                                                                                               |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `qwen35-4b-heretic`  | `hf.co/mradermacher/Qwen3.5-4B-SOMPOA-heresy-v2-GGUF:Q4_K_M`                                                                |
-| `qwen35-9b-heretic`  | `hf.co/mradermacher/Qwen3.5-9B-heretic-v2-GGUF:Q4_K_M`                                                                      |
-| `gemma4-31b-heretic` | `hf.co/mradermacher/gemma-4-31B-it-heretic-GGUF:Q4_K_M`                                                                     |
-| `qwen35-27b-heretic` | `hf.co/llmfan46/Qwen3.5-27B-uncensored-heretic-v1-GGUF:Q4_K_M`                                                              |
-| `goetia`             | `hf.co/mradermacher/Goetia-26B-A4B-v1.3-Absolute-Heretic-ARA-GGUF:Q4_K_M`                                                   |
-| `qwen38`             | `hf.co/HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF:Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf` |
-| `inkling2-mini`      | `inkling-2-mini:26b-a5b-nvfp4` (MLX 形式)                                                                                   |
-| `qwen38-cyber`       | `hf.co/philbert440/Qwen3.8-27B-Uncensored-Cyber-GGUF:Q4_K_M`                                                                |
-| `ripple-abliterated` | `hf.co/0xKitkat/Ripple-65B-Preview-abliterated-GGUF:Q4_K_M`                                                                 |
-| `gemma4-26b-heretic` | `hf.co/llmfan46/gemma-4-26B-A4B-it-uncensored-heretic-GGUF:Q4_K_M`                                                          |
-| `xortron-large`      | `hf.co/mradermacher/XORTRON.CriminalComputing.LARGE.2026.3-GGUF:Q4_K_M`                                                     |
-| `qwen35-queen`       | `hf.co/mradermacher/Qwen3.5-Queen-27B-GGUF:Q4_K_M`                                                                          |
-| `assistant-pepe`     | `hf.co/SicariusSicariiStuff/Assistant_Pepe_70B_GGUF:Q4_K_M`                                                                 |
-| `llama4`             | `llama4:17b-scout-16e-instruct-q4_K_M`                                                                                      |
+各モデルの取得元 (Ollama の tag) は [`ollama/models.txt`](../ollama/models.txt) の 2 列目にあります。
 
 ### `gemma4-31b-heretic`
 
@@ -104,7 +89,7 @@ Qwen3.8 27B をベースにした "Aggressive" 版で、配布元は、拒否率
 
 ### `inkling2-mini`
 
-Thinking Machines の公式モデルで、拒否を減らす処理はしていません。Ollama の library には MLX 形式の tag しか無く、Ollama 0.40.17 はこのモデルを Apple Silicon の構成でしか実行できないので、その構成でだけ pull します (Hugging Face には GGUF もあります)。実効パラメータは 5.4B の MoE です。thinking は既定で有効で、Ollama の `think` で切り替えます。
+Thinking Machines の公式モデルで、拒否を減らす処理はしていません。Ollama の library には MLX 形式の tag しか無く、Ollama 0.40.17 はこのモデルを Apple Silicon の構成でしか実行できないので、その構成でだけ pull します (Hugging Face には GGUF もあります)。thinking は既定で有効で、Ollama の `think` で切り替えます。
 
 | 指標 (公式の比較)  | `inkling2-mini` | Qwen3.8-27B (`qwen38` のベース) |
 | ------------------ | --------------- | ------------------------------- |
@@ -142,8 +127,6 @@ agentic coding 向けの Dense 65B モデル `ricursiveAI/Ripple-65B-Preview` �
 `meta-llama/Llama-3.1-70B-Instruct` を 4chan のデータで追加学習したモデルです。システムプロンプトが無くても使えるように学習されています。
 
 ### `llama4`
-
-Meta 公式の Llama 4 Scout で、拒否を減らす処理はしていません。収録モデルで最も長い、公称 10M トークンのコンテキストを持ちます。総パラメータが 109B あるので、Q4 でも 67GB を使います。
 
 Ollama は、リクエストで `num_ctx` を指定しないと、VRAM の量に応じて 4,096・32,768・262,144 トークンのどれかのコンテキストで動かします。それより長い入力を扱うには、次のどれかでコンテキスト長を指定します。実際に扱える長さは、KV cache が収まるメモリの量で決まります。
 
@@ -236,8 +219,9 @@ flowchart LR
   pull["tag で pull"] -- 失敗 --> warn
   pull --> check{"manifest の sha256 が<br>models.txt の digest と一致?"}
   check -- する --> alias["エイリアスを更新"]
-  check -- しない --> warn["警告を出して飛ばす<br>(エイリアスは前の版のまま)"]
-  warn --> exit["mise run pull は最後に<br>0 以外の終了コードで終わる"]
+  alias -- 失敗 --> warn
+  check -- しない --> warn["警告を出して次のモデルへ進む<br>(エイリアスは前の版のまま)"]
+  warn --> exit["全モデルを処理した後、<br>0 以外の終了コードで終わる"]
 ```
 
 上流で tag の内容が更新されると、Renovate が digest を更新するまで ([依存関係の更新](development.md#依存関係の更新)) そのモデルは照合に失敗します。

@@ -13,12 +13,12 @@ flowchart LR
 
 どれも Docker Compose のサービスで、操作は [mise](https://mise.jdx.dev/) のタスク (`mise run <task>`) で行います。
 
-| サービス      | 動いている期間                                   |
-| ------------- | ------------------------------------------------ |
-| `ollama`      | 起動から停止まで                                 |
-| `open-webui`  | 起動から停止まで                                 |
-| `ollama-init` | 起動のたびに動き、モデルの pull を終えると止まる |
-| `cli`         | CLI のタスクを実行している間だけ                 |
+| サービス      | 動いている期間                                                          |
+| ------------- | ----------------------------------------------------------------------- |
+| `ollama`      | 起動から停止まで                                                        |
+| `open-webui`  | 起動から停止まで                                                        |
+| `ollama-init` | 起動時と `mise run pull` の実行時に動き、モデルの pull を終えると止まる |
+| `cli`         | `mise run code` の実行中だけ                                            |
 
 ## 必要なもの
 
@@ -138,7 +138,7 @@ aider でコードを編集する。aider は git と連携するが、変更を
 
 既定ではこのリポジトリを開く。ほかのディレクトリは `MOUNT_DIR=/path/to/project mise run code` のように指定する (相対パスはこのリポジトリの直下が基準)。モデルは `MODEL=goetia mise run code` のように ollama/models.txt のエイリアスで指定し、省略すると設定の `DEFAULT_MODEL` を使う。`--` 以降の引数は aider に渡す (例: `mise run code -- --no-git`)。
 
-先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。
+先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。
 
 
 - **Usage:** `code`
@@ -174,7 +174,7 @@ README.md のタスク一覧を mise.toml と同期する
 
 Ollama に登録済みのモデルを一覧する。
 
-先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。
+先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。
 
 
 - **Usage:** `models`
@@ -183,7 +183,7 @@ Ollama に登録済みのモデルを一覧する。
 
 ollama/models.txt のモデルを pull してエイリアスを更新する。
 
-サービスの起動時にも同じ処理が走る。起動したまま models.txt の変更を反映するときに使う。先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。
+サービスの起動時にも同じ処理が走る。起動したまま models.txt に追加・変更したモデルを取り込むときに使う (行を消したモデルは Ollama から消えない)。先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。
 
 
 - **Usage:** `pull`
@@ -204,11 +204,11 @@ Web UI をブラウザで開く
 
 - **Usage:** `up`
 
-GPU を使わずに全サービスを起動する
+GPU を使わずにサービスを起動する
 
 ## `up:apple`
 
-Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続して全サービスを起動する。
+Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続してサービスを起動する。
 
 先に別の端末で `mise run serve` を実行しておく。手順と制約は README の「Apple Silicon の Mac で GPU を使う」にある。
 
@@ -219,6 +219,6 @@ Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続して�
 
 - **Usage:** `up:gpu`
 
-NVIDIA GPU を ollama に割り当てて全サービスを起動する
+NVIDIA GPU を ollama に割り当ててサービスを起動する
 <!-- /mise-tasks -->
 <!-- dprint-ignore-end -->

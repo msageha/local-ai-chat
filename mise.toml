@@ -41,18 +41,18 @@ COMPOSE_DISABLE_ENV_FILE = "1"
 # DEFAULT_MODEL = "qwen35-4b-heretic:latest"
 
 [tasks.up]
-description = "GPU を使わずに全サービスを起動する"
+description = "GPU を使わずにサービスを起動する"
 # 構成は起動のタスクで選ぶので、シェルの COMPOSE_FILE や compose.override.yaml を拾わないよう compose ファイルを明示する (down・logs・ui も同じ)
 run = "docker compose -f compose.yaml up -d"
 
 [tasks."up:gpu"]
-description = "NVIDIA GPU を ollama に割り当てて全サービスを起動する"
+description = "NVIDIA GPU を ollama に割り当ててサービスを起動する"
 run = "docker compose -f compose.yaml -f compose.gpu.yaml up -d"
 
 [tasks."up:apple"]
-description = "Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続して全サービスを起動する"
+description = "Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続してサービスを起動する"
 usage = '''
-long_about "Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続して全サービスを起動する。\n\n先に別の端末で `mise run serve` を実行しておく。手順と制約は README の「Apple Silicon の Mac で GPU を使う」にある。"
+long_about "Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続してサービスを起動する。\n\n先に別の端末で `mise run serve` を実行しておく。手順と制約は README の「Apple Silicon の Mac で GPU を使う」にある。"
 '''
 run = "docker compose -f compose.yaml -f compose.apple.yaml up -d"
 
@@ -117,14 +117,14 @@ open "$url" 2>/dev/null || xdg-open "$url" 2>/dev/null || echo "$url"
 [tasks.models]
 description = "Ollama に登録済みのモデルを一覧する"
 usage = '''
-long_about "Ollama に登録済みのモデルを一覧する。\n\n先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。"
+long_about "Ollama に登録済みのモデルを一覧する。\n\n先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。"
 '''
 run = "scripts/compose-running.sh run --rm --no-deps --entrypoint ollama ollama-init list"
 
 [tasks.pull]
 description = "ollama/models.txt のモデルを pull してエイリアスを更新する"
 usage = '''
-long_about "ollama/models.txt のモデルを pull してエイリアスを更新する。\n\nサービスの起動時にも同じ処理が走る。起動したまま models.txt の変更を反映するときに使う。先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。"
+long_about "ollama/models.txt のモデルを pull してエイリアスを更新する。\n\nサービスの起動時にも同じ処理が走る。起動したまま models.txt に追加・変更したモデルを取り込むときに使う (行を消したモデルは Ollama から消えない)。先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。"
 '''
 run = "scripts/compose-running.sh run --rm --no-deps ollama-init"
 
@@ -139,7 +139,7 @@ run = "ollama/update-digests.sh"
 [tasks.code]
 description = "aider でコードを編集する (MOUNT_DIR で対象のディレクトリ、MODEL でモデルを指定する)"
 usage = '''
-long_about "aider でコードを編集する。aider は git と連携するが、変更を自動では commit しない。\n\n既定ではこのリポジトリを開く。ほかのディレクトリは `MOUNT_DIR=/path/to/project mise run code` のように指定する (相対パスはこのリポジトリの直下が基準)。モデルは `MODEL=goetia mise run code` のように ollama/models.txt のエイリアスで指定し、省略すると設定の `DEFAULT_MODEL` を使う。`--` 以降の引数は aider に渡す (例: `mise run code -- --no-git`)。\n\n先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。"
+long_about "aider でコードを編集する。aider は git と連携するが、変更を自動では commit しない。\n\n既定ではこのリポジトリを開く。ほかのディレクトリは `MOUNT_DIR=/path/to/project mise run code` のように指定する (相対パスはこのリポジトリの直下が基準)。モデルは `MODEL=goetia mise run code` のように ollama/models.txt のエイリアスで指定し、省略すると設定の `DEFAULT_MODEL` を使う。`--` 以降の引数は aider に渡す (例: `mise run code -- --no-git`)。\n\n先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。"
 '''
 run = "scripts/compose-running.sh run --rm --no-deps --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-auto-commits --no-dirty-commits"
 

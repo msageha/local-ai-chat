@@ -32,10 +32,6 @@ compose ファイルの検査には、`compose.apple.yaml` の `!reset` タグ�
 
 Claude Code の workflow には、リポジトリの secret `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token` で発行) が要ります。`@claude` への応答には、[Claude GitHub App](https://github.com/apps/claude) のインストールも要ります。
 
-## 共通ファイル
-
-設定ファイルなどの共通ファイルは [dope-corp/template](https://github.com/dope-corp/template) にそろえています。
-
 ## 依存関係の更新
 
 ツール・イメージ・モデルは、すべて digest か exact version で固定しています。Renovate は、毎週月曜 9 時前 (Asia/Tokyo) の時間帯に、次のものに更新があれば PR を作ります。
@@ -83,7 +79,7 @@ flowchart LR
 
 Ollama は次の 2 か所で固定しており、同じ版にそろえます。片方だけを更新する PR は、もう片方を追従させてから merge します。食い違いは `ollama/check-versions.sh` が commit 時と CI で検出します。
 
-| 場所                      | 使う構成                                     |
-| ------------------------- | -------------------------------------------- |
-| `compose.yaml` のイメージ | Apple Silicon の構成以外 (コンテナの Ollama) |
-| `mise.toml` の `ollama`   | Apple Silicon の構成 (ホストの Ollama)       |
+| 場所                      | 使うもの                                                       |
+| ------------------------- | -------------------------------------------------------------- |
+| `compose.yaml` のイメージ | `ollama-init` と、Apple Silicon の構成以外の `ollama` サービス |
+| `mise.toml` の `ollama`   | Apple Silicon の構成でホストに動かす Ollama                    |
