@@ -28,6 +28,8 @@ lockfile = true
 # 変えるときは行のコメントを外す。手元だけの値と secret は、git 管理外の mise.local.toml の [env] に書く。
 # [env] の値はシェルの環境変数より優先されるので、実行ごとにシェルから渡す変数 (MODEL・MOUNT_DIR) はここに書かない
 [env]
+# 設定の置き場を [env] に一本化する。Compose が .env も読むと、[env] で既定に戻したつもりの値 (BIND_HOST=0.0.0.0 など) が .env から効く
+COMPOSE_DISABLE_ENV_FILE = "1"
 # ポートを bind するホスト側アドレス。同じネットワークに公開するなら 0.0.0.0
 # BIND_HOST = "127.0.0.1"
 # OLLAMA_PORT = "11434"
@@ -42,8 +44,8 @@ lockfile = true
 # DEFAULT_MODEL = "qwen35-4b-heretic:latest"
 
 [tasks.up]
-description = "全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)"
-# COMPOSE_FILE が残っていても使わないよう、compose ファイルを明示する (down・logs・ui も同じ)
+description = "GPU を使わずに全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)"
+# 構成は起動のタスクで選ぶので、シェルの COMPOSE_FILE や compose.override.yaml を拾わないよう compose ファイルを明示する (down・logs・ui も同じ)
 run = "docker compose -f compose.yaml up -d"
 
 [tasks."up:gpu"]

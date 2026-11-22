@@ -20,7 +20,7 @@ flowchart LR
 - NVIDIA GPU を使う場合: NVIDIA Container Toolkit
 - Apple Silicon の Mac で GPU を使う場合: macOS 14 以降と、Docker Desktop か OrbStack
 
-使うモデルが載るメモリも要ります。モデルごとの目安は「[モデル](#モデル)」にあります。Docker Desktop で Ollama をコンテナで動かすときは、Docker Desktop の VM にそのメモリを割り当ててください (既定はホストの 50%)。
+使うモデルが載るメモリも要ります。モデルごとの目安は「[モデル一覧](docs/models.md#モデル一覧)」にあります。Docker Desktop で Ollama をコンテナで動かすときは、Docker Desktop の VM にそのメモリを割り当ててください (既定はホストの 50%)。
 
 ## 起動と停止
 
@@ -61,7 +61,7 @@ MLX 形式のモデルはこの構成でだけ pull されます。この構成�
 ## 使い方
 
 - **Web UI**: `mise run ui` で開きます (既定では http://localhost:3000)。チャット画面でモデルを選んで使います。
-- **CLI (aider)**: `mise run code` は git と連携してリポジトリのコードを編集します (変更は自動で commit しません)。`mise run chat` は git 連携とリポジトリの全体像の把握 (repo map) を切った軽い会話用で、こちらもファイルを編集できます。どちらも既定ではこのリポジトリを開くので、ほかのプロジェクトは `MOUNT_DIR=/path/to/project mise run code` のように指定します。
+- **CLI (aider)**: `mise run code` は git と連携してリポジトリのコードを編集します (変更は自動で commit しません)。`mise run chat` は git 連携とリポジトリの全体像の把握 (repo map) を切った軽い会話用で、こちらもファイルを編集できます。どちらも既定ではこのリポジトリを開くので、ほかのプロジェクトは `MOUNT_DIR=/path/to/project mise run code` のように指定します (相対パスはこのリポジトリの直下が基準です)。
 - **CLI のモデルの切り替え**: `MODEL=goetia mise run chat` のように、その回だけ使うモデルのエイリアスを指定します。既定のモデルは「[設定](#設定)」の `DEFAULT_MODEL` で変えます。
 - **API**: Ollama の API を http://localhost:11434 で使えます (OpenAI 互換の API は `/v1`)。
 
@@ -69,7 +69,7 @@ MLX 形式のモデルはこの構成でだけ pull されます。この構成�
 
 ## 設定
 
-ポート・bind 先・既定モデルなどの設定項目は、`mise.toml` の `[env]` に既定値と説明付きで並んでいます。手元で変えるときは、git 管理外の `mise.local.toml` を作って `[env]` に書きます。
+ポート・bind 先・既定モデルなどの設定項目は、`mise.toml` の `[env]` に既定値と説明付きで並んでいます。手元で変えるときは、git 管理外の `mise.local.toml` を作って `[env]` に書きます。mise から動かす Compose は `.env` を読みません。
 
 ```toml
 # mise.local.toml
@@ -90,28 +90,9 @@ mise は `[env]` の値をシェルの環境変数より優先し、値の中の
 
 ## モデル
 
-主なモデルと用途は次のとおりです。既定のモデルは `qwen35-4b-heretic` です。選んだ根拠・モデルごとの詳細・ライセンスは [docs/models.md](docs/models.md) にあります。
+既定のモデルは軽量な `qwen35-4b-heretic` です。ほかに、セキュリティ・CTF・創作・コーディング・ペンテスト・長文などの用途ごとに選んだモデルを収録しています。モデルの一覧 (用途・サイズ・メモリの目安)・選んだ根拠・ライセンスは [docs/models.md](docs/models.md) にあります。
 
-| エイリアス           | 用途                                                            | サイズ | メモリの目安 (Apple Silicon / NVIDIA) |
-| -------------------- | --------------------------------------------------------------- | ------ | ------------------------------------- |
-| `qwen35-4b-heretic`  | 軽量・日常使い・画像入力                                        | ~3GB   | 8GB+ / 6GB+                           |
-| `qwen35-9b-heretic`  | 推論・脅威分析・画像入力                                        | ~6GB   | 16GB+ / 8GB+                          |
-| `gemma4-31b-heretic` | 汎用・セキュリティ・CTF・exploit                                | ~19GB  | 32GB+ / 24GB+                         |
-| `qwen35-27b-heretic` | 医療・薬学・法律などの知識 (専門分野の正確性は未評価)・画像入力 | ~17GB  | 32GB+ / 24GB+                         |
-| `goetia`             | 創作・ロールプレイ (NSFW を含む)                                | ~17GB  | 32GB+ / 24GB+                         |
-| `qwen38`             | コーディング・エージェント                                      | ~19GB  | 32GB+ / 24GB+                         |
-| `inkling2-mini`      | コーディング・画像入力 (Apple Silicon の構成だけ)               | ~20GB  | 32GB+ / —                             |
-| `qwen38-cyber`       | ペンテスト・画像入力                                            | ~20GB  | 32GB+ / 24GB+                         |
-| `ripple-abliterated` | ペンテスト (大型)                                               | ~39GB  | 64GB+ / 48GB+                         |
-| `gemma4-26b-heretic` | 性能重視 (abliterated)・画像入力                                | ~18GB  | 32GB+ / 24GB+                         |
-| `xortron-large`      | 性能重視 (abliterated、大型)                                    | ~73GB  | 128GB+ / 96GB+                        |
-| `qwen35-queen`       | 性能重視 (uncensored)・画像入力                                 | ~17GB  | 32GB+ / 24GB+                         |
-| `assistant-pepe`     | 性能重視 (uncensored、大型)                                     | ~43GB  | 64GB+ / 48GB+                         |
-| `llama4`             | 1M トークンを超える長文・画像入力                               | ~67GB  | 96GB+ / 80GB+                         |
-
-abliterated は拒否に関わる方向を重みから取り除いたモデル、uncensored は追加学習や merge で拒否を減らしたモデルです。サイズは Q4 量子化でのダウンロード量で、実行時はこれに KV cache の分のメモリが加わります。
-
-モデルを足すときは、`ollama/models.txt` にエイリアスと取得元 (`hf.co/<user>/<repo>:<tag>` など) を並べた `<alias> <source>` の 1 行を足し、`mise run digests` で digest を書き込んでから `mise run pull` を実行します。書き方の決まりは [docs/models.md](docs/models.md#モデルを追加する) にあります。
+モデルを足す手順は「[モデルを追加する](docs/models.md#モデルを追加する)」にあります。
 
 ## 開発
 
@@ -199,7 +180,7 @@ Web UI をブラウザで開く
 
 - **Usage:** `up`
 
-全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)
+GPU を使わずに全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)
 
 ## `up:apple`
 
