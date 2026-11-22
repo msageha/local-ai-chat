@@ -3,12 +3,9 @@ x-ollama-url: &ollama-url http://ollama:11434
 name: local-ai-chat
 
 services:
-  # aider。`mise run chat` / `mise run code` / `mise run shell` から使う
+  # aider。`mise run code` から使う
   cli:
     image: paulgauthier/aider:v0.86.2@sha256:0d54037f6c97c85a926ebc3c903e27446f5bca96823d9f68902f1e623289b556
-    depends_on:
-      ollama:
-        condition: service_healthy
     volumes:
       - ${MOUNT_DIR:-.}:/app
     environment:
@@ -16,8 +13,6 @@ services:
       AIDER_MODEL: "ollama_chat/${DEFAULT_MODEL:-qwen35-4b-heretic:latest}"
     working_dir: /app
     profiles: [cli]
-    stdin_open: true
-    tty: true
 
   ollama:
     image: ollama/ollama:0.40.17@sha256:ccc42bcd3d5fcf7ab0d532b300382154e1a4da56fc666bdb313b78ebdd912754

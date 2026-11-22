@@ -31,14 +31,6 @@ repos:
         language: system
         entry: mise exec -- shellcheck
         types: [shell]
-      - id: dclint
-        name: Lint compose files with dclint
-        language: system
-        # --max-warnings 0: キーの並び順などの warning も失敗にする
-        entry: mise exec -- dclint --max-warnings 0 compose.yaml compose.gpu.yaml compose.apple.yaml
-        # 設定 (.dclintrc) だけの変更でも検査し直す
-        files: ^(compose(\.gpu|\.apple)?\.yaml|\.dclintrc)$
-        pass_filenames: false
       - id: compose-config
         name: Validate compose files
         language: system

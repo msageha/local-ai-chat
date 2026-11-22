@@ -11,14 +11,23 @@ flowchart LR
   init["ollama-init (モデルの pull)"] --> ollama
 ```
 
-どれも Docker Compose のサービスです。`ollama` と `open-webui` は起動している間動き続け、`ollama-init` はモデルの pull を終えると止まり、`cli` は CLI のタスクを実行したときだけ動きます。操作は [mise](https://mise.jdx.dev/) のタスク (`mise run <task>`) で行います。
+どれも Docker Compose のサービスで、操作は [mise](https://mise.jdx.dev/) のタスク (`mise run <task>`) で行います。
+
+| サービス      | 動いている期間                                                          |
+| ------------- | ----------------------------------------------------------------------- |
+| `ollama`      | 起動から停止まで                                                        |
+| `open-webui`  | 起動から停止まで                                                        |
+| `ollama-init` | 起動時と `mise run pull` の実行時に動き、モデルの pull を終えると止まる |
+| `cli`         | `mise run code` の実行中だけ                                            |
 
 ## 必要なもの
 
-- Docker Compose v2 と mise
-- モデルを置くディスク: 全モデルで約 360GB (Apple Silicon の構成では約 380GB)
-- NVIDIA GPU を使う場合: NVIDIA Container Toolkit
-- Apple Silicon の Mac で GPU を使う場合: macOS 14 以降と、Docker Desktop か OrbStack
+| 対象                               | 必要なもの                                                                                                                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| すべて                             | Docker Compose v2、mise                                                                                                                                                                    |
+| モデルを置くディスク               | 全モデルで約 360GB (Apple Silicon の構成では約 380GB)                                                                                                                                      |
+| NVIDIA GPU を使う                  | NVIDIA Container Toolkit                                                                                                                                                                   |
+| Apple Silicon の Mac で GPU を使う | macOS 14 以降、Docker Desktop か OrbStack、`!reset` タグに対応した Docker Compose (`docker compose -f compose.yaml -f compose.apple.yaml config --quiet` がエラーなく終われば対応している) |
 
 使うモデルが載るメモリも要ります。モデルごとの目安は「[モデル一覧](docs/models.md#モデル一覧)」にあります。Docker Desktop で Ollama をコンテナで動かすときは、Docker Desktop の VM にそのメモリを割り当ててください (既定はホストの 50%)。
 
@@ -30,42 +39,54 @@ flowchart LR
 mise trust && mise install
 ```
 
-マシンに合わせて起動のタスクを選び、起動したら `mise run ui` で Web UI を開きます。止めるときは `mise run down` を実行します。
+マシンに合わせて起動します。
 
-| マシン                             | 起動のタスク                                                                        |
-| ---------------------------------- | ----------------------------------------------------------------------------------- |
-| GPU を使わない                     | `mise run up`                                                                       |
-| NVIDIA GPU のあるマシン            | `mise run up:gpu`                                                                   |
-| Apple Silicon の Mac で GPU を使う | 「[Apple Silicon の Mac で GPU を使う](#apple-silicon-の-mac-で-gpu-を使う)」の手順 |
+| マシン                             | 起動                                                                                | 停止            |
+| ---------------------------------- | ----------------------------------------------------------------------------------- | --------------- |
+| GPU を使わない                     | `mise run up`                                                                       | `mise run down` |
+| NVIDIA GPU のあるマシン            | `mise run up:gpu`                                                                   | `mise run down` |
+| Apple Silicon の Mac で GPU を使う | 「[Apple Silicon の Mac で GPU を使う](#apple-silicon-の-mac-で-gpu-を使う)」の手順 | 同じ節の手順    |
 
-起動すると、`ollama/models.txt` に並べたモデルのダウンロード (pull) がバックグラウンドで始まります。ダウンロードしたモデルは、固定した版 (digest) と一致するかを確かめてから、`qwen35-4b-heretic` のような短い名前 (エイリアス) で登録され、Web UI と CLI から使えるようになります。進み具合は `mise run logs` で見られ、`ready: <alias>` と出たモデルが使える状態です。
+起動すると、`ollama/models.txt` のモデルの pull がバックグラウンドで始まります。pull したモデルは、固定した版 (digest) と一致したものだけが `qwen35-4b-heretic` のような短い名前 (エイリアス) で登録されます (「[digest の照合](docs/models.md#digest-の照合)」)。進み具合は `mise run logs` で見られ、`ready: <alias>` と出たモデルから使えます。
+
+起動したら、次のものから使います。各タスクの詳細は「[タスク一覧](#タスク一覧)」にあります。
+
+| 使うもの | 入口                                       | 既定の接続先                                        |
+| -------- | ------------------------------------------ | --------------------------------------------------- |
+| Web UI   | `mise run ui`                              | http://localhost:3000                               |
+| aider    | `mise run code` (端末からコードを編集する) | —                                                   |
+| API      | Ollama の API                              | http://localhost:11434 (OpenAI 互換の API は `/v1`) |
 
 ### Apple Silicon の Mac で GPU を使う
 
-macOS の Docker のコンテナからは GPU (Metal) を使えません。そのため、この構成では Ollama をコンテナではなくホストで動かし、コンテナの `ollama` サービスはホストの Ollama へ転送するだけになります。ホストの Ollama は、Ollama の library に MLX 形式の版しか無いモデル (`ollama/models.txt` で `mlx` を付けた行) も動かせます。
+macOS の Docker のコンテナからは GPU (Metal) を使えません。そのため、この構成では Ollama をホストで動かし、コンテナの `ollama` サービスはホストの Ollama へ転送するだけになります。Web UI と CLI の接続先は、通常の構成と変わりません。
 
-この構成の Compose ファイルは `!reset` タグを使うので、対応した Docker Compose が要ります。`docker compose -f compose.yaml -f compose.apple.yaml config --quiet` がエラーなく終われば対応しています。
+```mermaid
+flowchart LR
+  subgraph docker["Docker"]
+    webui[open-webui] --> proxy["ollama (Caddy による転送)"]
+    cli["cli (aider)"] --> proxy
+  end
+  proxy -- "host.docker.internal:OLLAMA_PORT" --> host["ホストの Ollama<br>(mise run serve)"]
+  host --> gpu["GPU (Metal)・MLX"]
+```
 
-1. ほかの構成で起動しているなら `mise run down` で止め、Ollama.app など、ほかの Ollama も止めます。ホストの Ollama は `OLLAMA_PORT` (既定 11434) で待ち受けるので、同じポートを使うものが動いていると起動できないか、そちらに接続してしまいます。
-2. 1 つ目の端末で `mise run serve` を実行し、ホストの Ollama を起動します。`Listening on` と表示されたら起動済みで、この端末は開いたままにします。
-3. 2 つ目の端末で `mise run up:apple` を実行します。
+| 項目                 | 通常の構成           | この構成                                                                                                               |
+| -------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Ollama の版          | コンテナのイメージ   | `mise install` が入れた、イメージと同じ版                                                                              |
+| モデルの置き場       | `data/ollama/models` | 同じ (構成を切り替えても pull し直さない)                                                                              |
+| ollama.com の認証鍵  | `data/ollama`        | `data/ollama/home` (ホストのユーザーのサインイン状態は使わない)                                                        |
+| `mlx` を付けたモデル | pull しない          | pull する (Ollama の library に MLX 形式しか無いモデル)                                                                |
+| `BIND_HOST`          | 任意                 | loopback を含むアドレスだけ (`127.0.0.1`・`0.0.0.0`・`::1`・`::` など)。コンテナがホストの loopback 経由で接続するため |
 
-止めるときは `mise run down` を実行し、`mise run serve` の端末で Ctrl-C を押します。通常の構成に戻すときは、両方を止めてから `mise run up` で起動します。
+| 手順 | 端末   | 操作                                                                                                                                                                                        |
+| ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | どれか | ほかの構成で起動していれば `mise run down` で止める。Ollama.app などのほかの Ollama も止める。`OLLAMA_PORT` (既定 11434) を使うものが動いていると、起動に失敗するか、そちらに接続してしまう |
+| 2    | 1 つ目 | `mise run serve` でホストの Ollama を起動する。`Listening on` と出たら起動済みで、この端末は開いたままにする                                                                                |
+| 3    | 2 つ目 | `mise run up:apple` を実行する                                                                                                                                                              |
+| 停止 | 両方   | `mise run down` を実行し、`mise run serve` の端末で Ctrl-C を押す。通常の構成に戻すときは、両方を止めてから `mise run up` で起動する                                                        |
 
-ホストの Ollama は、`mise install` がコンテナのイメージと同じ版を入れたものです。モデルはコンテナのときと同じ `data/ollama/models` に置くので、構成を切り替えても pull し直す必要はありません。ollama.com の認証鍵は `data/ollama/home` に置き、ホストのユーザーのサインイン状態は使いません。Web UI と CLI の接続先は、通常の構成と変わりません。
-
-この構成では、`BIND_HOST` に loopback を含むアドレス (`127.0.0.1`・`0.0.0.0`・`::1`・`::` など) だけを使えます。コンテナはホストの loopback を経由してホストの Ollama に接続するためです。
-
-MLX 形式のモデルはこの構成でだけ pull されます。この構成で pull した後に通常の構成へ戻すと、そのモデルは選択肢に残りますが動かないので、使わないなら、`docker compose exec ollama ollama rm inkling2-mini inkling-2-mini:26b-a5b-nvfp4` のように、エイリアスと取得元の名前 (`ollama/models.txt` の 2 列目) を指定して消してください。
-
-## 使い方
-
-- **Web UI**: `mise run ui` で開きます (既定では http://localhost:3000)。チャット画面でモデルを選んで使います。
-- **CLI (aider)**: `mise run code` は git と連携してリポジトリのコードを編集します (変更は自動で commit しません)。`mise run chat` は git 連携とリポジトリの全体像の把握 (repo map) を切った軽い会話用で、こちらもファイルを編集できます。どちらも既定ではこのリポジトリを開くので、ほかのプロジェクトは `MOUNT_DIR=/path/to/project mise run code` のように指定します (相対パスはこのリポジトリの直下が基準です)。
-- **CLI のモデルの切り替え**: `MODEL=goetia mise run chat` のように、その回だけ使うモデルのエイリアスを指定します。既定のモデルは「[設定](#設定)」の `DEFAULT_MODEL` で変えます。
-- **API**: Ollama の API を http://localhost:11434 で使えます (OpenAI 互換の API は `/v1`)。
-
-`chat`・`code`・`shell`・`pull`・`models` のタスクは、起動中のサービスと同じ構成で動きます。先に `up`・`up:gpu`・`up:apple` のどれかで起動しておいてください。
+この構成で pull した MLX 形式のモデルは、通常の構成に戻すと選択肢に残りますが動きません。使わないなら、`docker compose exec ollama ollama rm inkling2-mini inkling-2-mini:26b-a5b-nvfp4` のように、エイリアスと取得元の名前 (`ollama/models.txt` の 2 列目) を指定して消してください。
 
 ## 設定
 
@@ -78,11 +99,18 @@ WEBUI_AUTH = "true" # Web UI にログイン画面を付ける
 BIND_HOST = "0.0.0.0" # 同じネットワークのほかの端末からも使う
 ```
 
-既定ではポートを `127.0.0.1` にだけ bind し、同じマシンからしか接続できません。`BIND_HOST` を `0.0.0.0` にすると、Web UI と Ollama の API の両方が同じネットワークのほかの端末に公開されます。
+| `BIND_HOST`        | 接続できる範囲                                                  |
+| ------------------ | --------------------------------------------------------------- |
+| `127.0.0.1` (既定) | 同じマシンだけ                                                  |
+| `0.0.0.0`          | 同じネットワークのほかの端末も (Web UI と Ollama の API の両方) |
 
-- Web UI は、`WEBUI_AUTH` を `true` にしてログインを必須にしてください。`false` のままだと、接続できる人が誰でも管理者として使えます。ユーザーを登録した後は `false` に戻せません。
-- Web UI では最初に登録したアカウントが管理者になります。公開する前に、`BIND_HOST` を既定のまま起動して管理者を登録しておいてください。
-- Ollama の API には認証がありません。接続できる人は誰でも、モデルの実行・追加・削除ができます。
+公開するときは、次の点に注意してください。
+
+| 対象          | 注意点                                                                                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web UI        | `WEBUI_AUTH` を `true` にしてログインを必須にする。`false` のままだと、接続できる人が誰でも管理者として使える。ユーザーを登録した後は `false` に戻せない |
+| Web UI        | 最初に登録したアカウントが管理者になる。公開する前に、`BIND_HOST` を既定のまま起動して管理者を登録しておく                                               |
+| Ollama の API | 認証が無い。接続できる人は誰でも、モデルの実行・追加・削除ができる                                                                                       |
 
 既定のモデルは `DEFAULT_MODEL` で変えます。`ollama/models.txt` のエイリアスにタグを付けて、`qwen38:latest` のように書きます。Web UI はこの値を初回の起動時にだけ読み、以後は Web UI の管理画面の設定が優先されます。
 
@@ -104,23 +132,25 @@ mise は `[env]` の値をシェルの環境変数より優先し、値の中の
 
 <!-- dprint-ignore-start -->
 <!-- mise-tasks -->
-## `chat`
-
-- **Usage:** `chat`
-
-aider でチャットする (環境変数 MODEL にエイリアスを指定するとモデルを切り替えられる)
-
 ## `code`
+
+aider でコードを編集する。aider は git と連携するが、変更を自動では commit しない。
+
+既定ではこのリポジトリを開く。ほかのディレクトリは `MOUNT_DIR=/path/to/project mise run code` のように指定する (相対パスはこのリポジトリの直下が基準)。モデルは `MODEL=goetia mise run code` のように ollama/models.txt のエイリアスで指定し、省略すると設定の `DEFAULT_MODEL` を使う。`--` 以降の引数は aider に渡す (例: `mise run code -- --no-git`)。
+
+先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。
+
 
 - **Usage:** `code`
 
-MOUNT_DIR のコードを aider で編集する (環境変数 MODEL でモデルを切り替え、`--` 以降は aider に渡す)
-
 ## `digests`
 
-- **Usage:** `digests`
+ollama/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)。
 
-ollama/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)
+モデルを追加・変更したときに使う。手順は docs/models.md の「モデルを追加する」にある。既存のモデルの digest は Renovate が更新する。
+
+
+- **Usage:** `digests`
 
 ## `docs`
 
@@ -142,33 +172,27 @@ README.md のタスク一覧を mise.toml と同期する
 
 ## `models`
 
-- **Usage:** `models`
+Ollama に登録済みのモデルを一覧する。
 
-Ollama に登録済みのモデルを一覧する
+先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。
+
+
+- **Usage:** `models`
 
 ## `pull`
 
-- **Usage:** `pull`
+ollama/models.txt のモデルを pull してエイリアスを更新する。
 
-ollama/models.txt のモデルを pull してエイリアスを更新する
+サービスの起動時にも同じ処理が走る。起動したまま models.txt に追加・変更したモデルを取り込むときに使う (行を消したモデルは Ollama から消えない)。先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。
+
+
+- **Usage:** `pull`
 
 ## `serve`
 
 - **Usage:** `serve`
 
-Apple Silicon の構成で、ホストの Ollama を起動する (`mise run up:apple` の前に別のターミナルで実行し、Ctrl-C で止める)
-
-## `shell`
-
-- **Usage:** `shell`
-
-aider コンテナで bash を起動する
-
-## `template-diff`
-
-- **Usage:** `template-diff`
-
-共通ファイルを dope-corp/template の main と比較する
+Apple Silicon の構成で、ホストの Ollama を起動する (`mise run up:apple` の前に別の端末で実行し、Ctrl-C で止める)
 
 ## `ui`
 
@@ -180,18 +204,21 @@ Web UI をブラウザで開く
 
 - **Usage:** `up`
 
-GPU を使わずに全サービスを起動する。モデルの pull はバックグラウンドで進む (`mise run logs` で確認)
+GPU を使わずにサービスを起動する
 
 ## `up:apple`
 
-- **Usage:** `up:apple`
+Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続してサービスを起動する。
 
-Apple Silicon の構成で全サービスを起動する (先に別のターミナルで `mise run serve` を実行しておく)
+先に別の端末で `mise run serve` を実行しておく。手順と制約は README の「Apple Silicon の Mac で GPU を使う」にある。
+
+
+- **Usage:** `up:apple`
 
 ## `up:gpu`
 
 - **Usage:** `up:gpu`
 
-NVIDIA GPU を ollama に割り当てて全サービスを起動する
+NVIDIA GPU を ollama に割り当ててサービスを起動する
 <!-- /mise-tasks -->
 <!-- dprint-ignore-end -->

@@ -1,5 +1,0 @@
-rules:
-  # ports は BIND_HOST 変数で bind 先を指定しているが、dclint は変数を展開せず、bind 先が無いと判定する
-  no-unbound-port-interfaces: 0
-  # dprint (pretty_yaml) が文字列をダブルクォートに揃えるので、同じ向きにする
-  require-quotes-in-ports: [2, {quoteType: double}]

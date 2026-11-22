@@ -25,7 +25,7 @@
       "minimumReleaseAgeBehaviour": "timestamp-optional"
     },
     {
-      "description": "PR が乱立しないよう、major 以外の更新は manager を問わず 1 つの PR にまとめる。major は個別 PR で人手レビューする",
+      "description": "PR が乱立しないよう、major 以外の更新は manager を問わず 1 つの PR にまとめる",
       "matchUpdateTypes": [
         "minor",
         "patch",
@@ -49,7 +49,7 @@
       "automergeType": "pr"
     },
     {
-      "description": "lock file maintenance (mise.lock の再解決) は mise.toml で固定した版の配布物の情報に限られるので、CI が green なら自動 merge する",
+      "description": "lock file maintenance (mise.lock の再解決) は mise.toml で固定した版を変えず、その版の配布物の情報 (URL・checksum など) だけを更新するので、CI が green なら自動 merge する",
       "matchUpdateTypes": [
         "lockFileMaintenance"
       ],
