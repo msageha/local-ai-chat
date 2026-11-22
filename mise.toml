@@ -5,15 +5,17 @@ prek = "0.5.9"
 actionlint = "1.7.12"
 dprint = "0.64.3"
 gitleaks = "8.30.1"
-# ollama/update-digests.sh が manifest を検証するのに使う
+# apps/text/update-digests.sh が manifest を検証するのに使う
 jq = "1.8.2"
 # actionlint は PATH に shellcheck があるときだけ run: を検査するため、ローカルと CI で揃えて pin する
 shellcheck = "0.11.0"
 zizmor = "1.32.0"
 typos = "1.52.2"
-# Apple Silicon の構成 (compose.apple.yaml) でホストに動かす Ollama。MLX は Apple Silicon の macOS でしか動かないので、そこにだけ入れる。
-# compose.yaml の ollama/ollama イメージと同じバージョンにする
+# Apple Silicon の構成 (apps/text/compose.apple.yaml) でホストに動かす Ollama。MLX は Apple Silicon の macOS でしか動かないので、そこにだけ入れる。
+# apps/text/compose.yaml の ollama/ollama イメージと同じバージョンにする
 ollama = { version = "0.40.17", os = ["macos/arm64"] }
+# Apple Silicon の構成で、ホストに ComfyUI の依存と Python を入れる (apps/shared/comfyui/serve.sh)
+uv = { version = "0.13.9", os = ["macos/arm64"] }
 
 [hooks]
 postinstall = "prek install"
@@ -21,127 +23,181 @@ postinstall = "prek install"
 [settings]
 lockfile = true
 
-# compose に渡す設定。未設定の項目は compose.yaml の既定値が使われる。
+# compose に渡す設定。未設定の項目は各アプリの compose.yaml の既定値が使われる。
 # 変えるときは行のコメントを外す。手元だけの値と secret は、git 管理外の mise.local.toml の [env] に書く。
 # [env] の値はシェルの環境変数より優先されるので、実行ごとにシェルから渡す変数 (MODEL・MOUNT_DIR) はここに書かない
 [env]
 # 設定の置き場を [env] に一本化する。Compose が .env も読むと、[env] で既定に戻したつもりの値 (BIND_HOST=0.0.0.0 など) が .env から効く
 COMPOSE_DISABLE_ENV_FILE = "1"
+# 各アプリの compose.yaml の name: で project を分けるので、シェルの COMPOSE_PROJECT_NAME で 1 つの project にまとめさせない
+COMPOSE_PROJECT_NAME = false
 # ポートを bind するホスト側アドレス。同じネットワークに公開するなら 0.0.0.0
 # BIND_HOST = "127.0.0.1"
 # OLLAMA_PORT = "11434"
 # WEBUI_PORT = "3000"
+# image と video のアプリの ComfyUI
+# IMAGE_PORT = "8188"
+# VIDEO_PORT = "8189"
 # ログイン画面を有効にするなら true (false だと接続できる誰でも管理者として使える)。ユーザー登録後は false に戻せない
 # WEBUI_AUTH = "false"
-# 未設定なら初回起動時に自動生成して data/open-webui/.webui_secret_key に保存する。
+# 未設定なら初回起動時に自動生成して data/text/open-webui/.webui_secret_key に保存する。
 # [env] の値は mise 経由で動かすすべてのコマンドに渡るので、鍵を指定する必要があるときだけ mise.local.toml に書く
 # WEBUI_SECRET_KEY = "<secret>"
-# Web UI と aider の既定モデル。ollama/models.txt のエイリアスをタグ付きで指定する。
+# Web UI と aider の既定モデル。apps/text/models.txt のエイリアスをタグ付きで指定する。
 # Web UI 側は初回起動時にだけ読み込まれ、以後は管理画面の設定が優先される
 # DEFAULT_MODEL = "qwen35-4b-heretic:latest"
 
+# 構成は起動のタスクで選ぶので、シェルの COMPOSE_FILE や compose.override.yaml を拾わないよう compose ファイルを明示する (ほかのタスクも同じ)
 [tasks.up]
-description = "GPU を使わずにサービスを起動する"
-# 構成は起動のタスクで選ぶので、シェルの COMPOSE_FILE や compose.override.yaml を拾わないよう compose ファイルを明示する (down・logs・ui も同じ)
-run = "docker compose -f compose.yaml up -d"
-
-[tasks."up:gpu"]
-description = "NVIDIA GPU を ollama に割り当ててサービスを起動する"
-run = "docker compose -f compose.yaml -f compose.gpu.yaml up -d"
-
-[tasks."up:apple"]
-description = "Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続してサービスを起動する"
+description = "アプリ (text・image・video) を起動する"
 usage = '''
-long_about "Apple Silicon の Mac で、GPU を使えるホストの Ollama に接続してサービスを起動する。\n\n先に別の端末で `mise run serve` を実行しておく。手順と制約は README の「Apple Silicon の Mac で GPU を使う」にある。"
+arg "<app>" help="text (LLM・Open WebUI・aider)・image (画像生成)・video (動画生成)" {
+  choices "text" "image" "video"
+}
+arg "[setup]" help="cpu (GPU を使わない。text だけ)・gpu (NVIDIA GPU)・apple (Apple Silicon の Mac の GPU)" default="cpu" {
+  choices "cpu" "gpu" "apple"
+}
+long_about "アプリ (text・image・video) を起動する。アプリはそれぞれ単独で起動・停止できる。\n\napple の構成では、先に別の端末で `mise run serve <app>` を実行しておく。手順と制約は README の「Apple Silicon の Mac で GPU を使う」にある。"
 '''
-run = "docker compose -f compose.yaml -f compose.apple.yaml up -d"
-
-[tasks.serve]
-description = "Apple Silicon の構成で、ホストの Ollama を起動する (`mise run up:apple` の前に別の端末で実行し、Ctrl-C で止める)"
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ $(uname -sm) != "Darwin arm64" ]]; then
-  echo "serve runs Ollama on the host and needs macOS on Apple Silicon" >&2
-  exit 1
-fi
-# [env] に書いた secret を、長く動き続けるホストの Ollama に引き継がせない
-unset WEBUI_SECRET_KEY
-# bind 先・ポート・Ollama の設定は compose が決めた値を使い、コンテナで動かすときと揃える
-config=$(docker compose -f compose.yaml -f compose.apple.yaml config --format json)
-# compose.apple.yaml の ollama サービスは --to host.docker.internal:<port> へ転送するので、そのポートで待ち受ける
-port=$(jq -r '.services.ollama.command | .[index("--to") + 1]' <<<"$config")
-port=${port##*:}
-bind_host=$(jq -r '.services["open-webui"].ports[0].host_ip' <<<"$config")
-# プロキシは host.docker.internal (ホストの loopback) へ転送するので、loopback を含む bind 先だけを受け付ける
-case $bind_host in
-127.* | ::1 | 0.0.0.0 | ::) ;;
+app=$usage_app
+setup=$usage_setup
+files=(-f "apps/$app/compose.yaml")
+options=()
+services=()
+case $app/$setup in
+text/cpu) ;;
+# ComfyUI のイメージはローカルで build するので、毎回 build を求めて COMFYUI_VERSION などの更新を反映する (変化が無ければ cache で済む)
+image/gpu | video/gpu) options=(--build) ;;
+text/gpu | text/apple | image/apple) files+=(-f "apps/$app/compose.$setup.yaml") ;;
+# ComfyUI はホスト (`mise run serve video`) で動かす。Open WebUI からは呼ばないので転送も置かず、モデルの取得だけを動かす
+video/apple) services=(comfyui-init) ;;
 *)
-  echo "BIND_HOST=$bind_host is not supported with compose.apple.yaml; use 127.0.0.1 or 0.0.0.0" >&2
+  echo "$app does not support $setup; use gpu or apple" >&2
   exit 1
   ;;
 esac
-# IPv6 のアドレスは、ポートと区別できるよう [] で囲む
-if [[ $bind_host == *:* ]]; then
-  bind_host="[$bind_host]"
-fi
-mkdir -p data/ollama/models data/ollama/home
-# ollama.com の認証鍵は $HOME/.ollama から読まれるので、ホストのユーザーのサインイン状態を引き継がないよう、
-# コンテナの ollama と同じくプロジェクトの下に分ける
-export HOME="$PWD/data/ollama/home"
-# コンテナの ollama と同じモデル置き場を使い、ollama-init がそこで digest を照合できるようにする
-export OLLAMA_HOST="$bind_host:$port" OLLAMA_MODELS="$PWD/data/ollama/models"
-export OLLAMA_KEEP_ALIVE OLLAMA_MAX_LOADED_MODELS
-OLLAMA_KEEP_ALIVE=$(jq -r '.services.ollama.environment.OLLAMA_KEEP_ALIVE' <<<"$config")
-OLLAMA_MAX_LOADED_MODELS=$(jq -r '.services.ollama.environment.OLLAMA_MAX_LOADED_MODELS' <<<"$config")
-exec ollama serve
+# アプリの間をつなぐ network。どの project にも属さないので、ここで作る
+# 同時に起動した別のアプリが先に作っていたら、それを使う
+docker network inspect local-ai-chat >/dev/null 2>&1 || docker network create local-ai-chat >/dev/null || docker network inspect local-ai-chat >/dev/null
+# bash 3.2 (macOS の /bin/bash) は、set -u の下で空の配列の展開をエラーにする
+docker compose "${files[@]}" up -d ${options[@]+"${options[@]}"} ${services[@]+"${services[@]}"}
+'''
+
+[tasks.serve]
+description = "Apple Silicon の構成で、アプリの Ollama か ComfyUI をホストで起動する (`mise run up <app> apple` の前に別の端末で実行し、Ctrl-C で止める)"
+usage = '''
+arg "<app>" {
+  choices "text" "image" "video"
+}
+'''
+run = '''
+case $usage_app in
+text) exec apps/text/serve.sh ;;
+*) exec apps/shared/comfyui/serve.sh "$usage_app" ;;
+esac
 '''
 
 [tasks.down]
-description = "全サービスを停止する"
-run = "docker compose -f compose.yaml down"
+description = "アプリを停止する (省略するとすべてのアプリ)"
+usage = '''
+arg "[app]" {
+  choices "text" "image" "video"
+}
+'''
+run = '''
+# 1 つのアプリの停止に失敗しても、残りのアプリを止める
+status=0
+for app in ${usage_app:-text image video}; do
+  docker compose -f "apps/$app/compose.yaml" down || status=1
+done
+exit $status
+'''
 
 [tasks.logs]
-description = "ログを追従表示する"
-run = "docker compose -f compose.yaml logs -f"
+description = "アプリのログを追従表示する"
+usage = '''
+arg "<app>" {
+  choices "text" "image" "video"
+}
+'''
+run = 'docker compose -f "apps/$usage_app/compose.yaml" logs -f'
 
 [tasks.ui]
-description = "Web UI をブラウザで開く"
+description = "アプリの Web UI (text は Open WebUI、image と video は ComfyUI) をブラウザで開く"
+usage = '''
+arg "<app>" {
+  choices "text" "image" "video"
+}
+'''
 run = '''
-port=$(docker compose -f compose.yaml port open-webui 8080) || { echo "open-webui is not running; start it with 'mise run up', 'mise run up:gpu' or 'mise run up:apple' first" >&2; exit 1; }
-url="http://localhost:${port##*:}"
+#!/usr/bin/env bash
+set -euo pipefail
+url=$(scripts/app-url.sh "$usage_app")
+# 同じポートの別のサービスを開かないよう、そのアプリのサーバーだけが返す API で確かめる
+case $usage_app in
+text) check=/api/config ;;
+*) check=/system_stats ;;
+esac
+# ローカルの UI への疎通なので、ユーザーの .curlrc や proxy の設定を使わない
+if ! curl -q --noproxy '*' -fsS -o /dev/null --max-time 5 "$url$check"; then
+  echo "$usage_app is not responding at $url; start it with 'mise run up $usage_app <setup>' (and 'mise run serve $usage_app' for apple) first" >&2
+  exit 1
+fi
 open "$url" 2>/dev/null || xdg-open "$url" 2>/dev/null || echo "$url"
 '''
 
-# Apple Silicon の構成では ollama サービスがプロキシになり ollama コマンドを持たないので、ollama-init のイメージで問い合わせる
-[tasks.models]
-description = "Ollama に登録済みのモデルを一覧する"
-usage = '''
-long_about "Ollama に登録済みのモデルを一覧する。\n\n先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。"
-'''
-run = "scripts/compose-running.sh run --rm --no-deps --entrypoint ollama ollama-init list"
-
 [tasks.pull]
-description = "ollama/models.txt のモデルを pull してエイリアスを更新する"
+description = "アプリの models.txt のモデルを取得する"
 usage = '''
-long_about "ollama/models.txt のモデルを pull してエイリアスを更新する。\n\nサービスの起動時にも同じ処理が走る。起動したまま models.txt に追加・変更したモデルを取り込むときに使う (行を消したモデルは Ollama から消えない)。先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。"
+arg "<app>" {
+  choices "text" "image" "video"
+}
+long_about "アプリの models.txt のモデルを取得する。\n\nアプリの起動時にも同じ処理が走る。起動したまま models.txt に追加・変更したモデルを取り込むときに使う (行を消したモデルは消えない)。text は先に `mise run up text [gpu|apple]` で起動しておく (起動中の構成で動く)。image と video は起動していなくても取得できる。"
 '''
-run = "scripts/compose-running.sh run --rm --no-deps ollama-init"
+run = '''
+case $usage_app in
+text) exec apps/text/compose-running.sh run --rm --no-deps ollama-init ;;
+*)
+  # image の compose.yaml は共有 network を宣言しており、Compose は run でもその存在を確かめるので、up と同じく用意する
+  docker network inspect local-ai-chat >/dev/null 2>&1 || docker network create local-ai-chat >/dev/null || docker network inspect local-ai-chat >/dev/null
+  exec docker compose -f "apps/$usage_app/compose.yaml" run --rm --no-deps comfyui-init
+  ;;
+esac
+'''
 
-[tasks.digests]
-description = "ollama/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)"
+# Apple Silicon の構成では ollama サービスがプロキシになり ollama コマンドを持たないので、ollama-init のイメージで問い合わせる
+[tasks."text:models"]
+description = "text アプリの Ollama に登録済みの LLM を一覧する"
 usage = '''
-long_about "ollama/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)。\n\nモデルを追加・変更したときに使う。手順は docs/models.md の「モデルを追加する」にある。既存のモデルの digest は Renovate が更新する。"
+long_about "text アプリの Ollama に登録済みの LLM を一覧する。\n\n先に `mise run up text [gpu|apple]` で起動しておく。起動中の構成で動く。"
 '''
-run = "ollama/update-digests.sh"
+run = "apps/text/compose-running.sh run --rm --no-deps --entrypoint ollama ollama-init list"
 
-# cli はホストの UID/GID で実行し、マウント先に作るファイルの所有者をホストユーザーに揃える
-[tasks.code]
+[tasks."text:digests"]
+description = "apps/text/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)"
+usage = '''
+long_about "apps/text/models.txt の digest を各 tag が今指す manifest に更新する (digest の無い行には追記する)。\n\nLLM を追加・変更したときに使う。手順は docs/models.md の「LLM を追加する」にある。既存のモデルの digest は Renovate が更新する。"
+'''
+run = "apps/text/update-digests.sh"
+
+[tasks."image:connect-webui"]
+description = "Open WebUI の画像生成を image アプリの ComfyUI につなぐ"
+usage = '''
+long_about "Open WebUI の画像生成を image アプリの ComfyUI につなぐ。\n\n先に `mise run up text [gpu|apple]` で Open WebUI を起動しておく。image アプリは後から起動してもよい。設定は Open WebUI の DB に残るので、一度実行すればよい (apps/image/open-webui.json を変えたときは再び実行する)。Open WebUI のログインを有効にしているなら、管理者のメールアドレスとパスワードの入力を求める。"
+'''
+run = "apps/image/connect-open-webui.sh"
+
+# aider はホストの UID/GID で実行し、マウント先に作るファイルの所有者をホストユーザーに揃える。
+# compose は相対パスを apps/text/ を基準に解くので、MOUNT_DIR はこのリポジトリの直下を基準に絶対パスにして渡す
+[tasks."text:code"]
 description = "aider でコードを編集する (MOUNT_DIR で対象のディレクトリ、MODEL でモデルを指定する)"
 usage = '''
-long_about "aider でコードを編集する。aider は git と連携するが、変更を自動では commit しない。\n\n既定ではこのリポジトリを開く。ほかのディレクトリは `MOUNT_DIR=/path/to/project mise run code` のように指定する (相対パスはこのリポジトリの直下が基準)。モデルは `MODEL=goetia mise run code` のように ollama/models.txt のエイリアスで指定し、省略すると設定の `DEFAULT_MODEL` を使う。`--` 以降の引数は aider に渡す (例: `mise run code -- --no-git`)。\n\n先に `up`・`up:gpu`・`up:apple` のどれかでサービスを起動しておく。起動中の構成で動く。"
+long_about "aider でコードを編集する。aider は git と連携するが、変更を自動では commit しない。\n\n既定ではこのリポジトリを開く。ほかのディレクトリは `MOUNT_DIR=/path/to/project mise run text:code` のように指定する (相対パスはこのリポジトリの直下が基準)。モデルは `MODEL=goetia mise run text:code` のように apps/text/models.txt のエイリアスで指定し、省略すると設定の `DEFAULT_MODEL` を使う。`--` 以降の引数は aider に渡す (例: `mise run text:code -- --no-git`)。\n\n先に `mise run up text [gpu|apple]` で起動しておく。起動中の構成で動く。"
 '''
-run = "scripts/compose-running.sh run --rm --no-deps --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} cli --no-auto-commits --no-dirty-commits"
+run = "dir=$(CDPATH='' cd -- \"${MOUNT_DIR:-.}\" && pwd) && MOUNT_DIR=$dir exec apps/text/compose-running.sh run --rm --no-deps --user \"$(id -u):$(id -g)\" ${MODEL:+-e AIDER_MODEL=ollama_chat/$MODEL} aider --no-auto-commits --no-dirty-commits"
 
 [tasks.docs]
 description = "README.md のタスク一覧を mise.toml と同期する"

@@ -4,7 +4,7 @@
 #   digest: manifest の sha256 (`ollama list` の ID はこの先頭 12 文字)。Ollama は digest を指定して pull できないため、
 #           pull 後に照合し、食い違えば alias を更新しない。Renovate が各 tag の最新へ更新する
 #   requires: 省略可。`mlx` は Ollama が MLX でしか動かせないモデルで、Apple Silicon の構成 (compose.apple.yaml) のときだけ pull する
-# 追加・変更後は `mise run digests` で digest を書き込み、`mise run pull` で反映する
+# 追加・変更後は `mise run text:digests` で digest を書き込み、`mise run pull text` で反映する
 qwen35-4b-heretic   hf.co/mradermacher/Qwen3.5-4B-SOMPOA-heresy-v2-GGUF:Q4_K_M                                                                 sha256:f9721b8e7c890a4fd07ac2a8c2a11e0ac93e18b27fbebeb9c2f1710188fd85c9
 gemma4-31b-heretic  hf.co/mradermacher/gemma-4-31B-it-heretic-GGUF:Q4_K_M                                                                      sha256:52520bae6687916c76ff75f875feea4b396d0737de2fac6e3314fecfdc714114
 qwen35-queen        hf.co/mradermacher/Qwen3.5-Queen-27B-GGUF:Q4_K_M                                                                           sha256:0a8604bc515c0715a24bcf4d9b33003dcb901dae17ed293cee21bcf0ea2129a1

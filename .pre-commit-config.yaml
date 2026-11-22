@@ -14,7 +14,7 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
         # compose の独自タグ (!reset) を解釈できないので外す。この override は compose-config で検査する
-        exclude: ^compose\.apple\.yaml$
+        exclude: ^apps/(text|image)/compose\.apple\.yaml$
       - id: check-json
       - id: check-toml
       - id: check-added-large-files
@@ -34,15 +34,21 @@ repos:
       - id: compose-config
         name: Validate compose files
         language: system
-        # GPU と Apple Silicon の override は別の構成なので、それぞれ compose.yaml に重ねて検査する
-        entry: sh -c 'docker compose -f compose.yaml -f compose.gpu.yaml config --quiet && docker compose -f compose.yaml -f compose.apple.yaml config --quiet'
-        files: ^compose(\.gpu|\.apple)?\.yaml$
+        # GPU と Apple Silicon の override は別の構成なので、それぞれのアプリの compose.yaml に重ねて検査する
+        entry: >-
+          sh -c 'docker compose -f apps/text/compose.yaml config --quiet
+          && docker compose -f apps/text/compose.yaml -f apps/text/compose.gpu.yaml config --quiet
+          && docker compose -f apps/text/compose.yaml -f apps/text/compose.apple.yaml config --quiet
+          && docker compose -f apps/image/compose.yaml config --quiet
+          && docker compose -f apps/image/compose.yaml -f apps/image/compose.apple.yaml config --quiet
+          && docker compose -f apps/video/compose.yaml config --quiet'
+        files: ^apps/(text|image|video|shared/comfyui)/compose(\.gpu|\.apple)?\.yaml$
         pass_filenames: false
       - id: ollama-versions
-        name: Check that the Ollama versions in compose.yaml and mise.toml match
+        name: Check that the Ollama versions in apps/text/compose.yaml and mise.toml match
         language: system
-        entry: ollama/check-versions.sh
-        files: ^(compose\.yaml|mise\.toml|ollama/check-versions\.sh)$
+        entry: apps/text/check-versions.sh
+        files: ^(apps/text/compose\.yaml|mise\.toml|apps/text/check-versions\.sh)$
         pass_filenames: false
       - id: zizmor
         name: Audit GitHub Actions workflows with zizmor
@@ -65,7 +71,7 @@ repos:
       - id: dprint-fmt
         name: Format json/yaml/markdown/toml with dprint
         language: system
-        # --allow-no-files: 渡されたファイルがすべて dprint.json の excludes に当たるとき
+        # --allow-no-files: 渡されたファイルがすべて .dprint.json の excludes に当たるとき
         # (mise.lock だけの commit 等) に exit 14 (No files found) で失敗しないようにする
         entry: mise exec -- dprint fmt --allow-no-files
         types_or: [json, yaml, markdown, toml]

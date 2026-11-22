@@ -1,0 +1,28 @@
+# 画像を生成する ComfyUI。この compose.yaml だけでは NVIDIA GPU で動かし、Apple Silicon では compose.apple.yaml を重ねる
+name: local-ai-chat-image
+
+services:
+  comfyui:
+    extends:
+      file: ../shared/comfyui/compose.yaml
+      service: comfyui
+    volumes:
+      - ../../data/image/comfyui:/data
+    ports:
+      - "${BIND_HOST:-127.0.0.1}:${IMAGE_PORT:-8188}:8188"
+    # text アプリの Open WebUI から http://comfyui:8188 で呼ばれるため、アプリ間の共有 network にも入る
+    networks: [default, shared]
+
+  comfyui-init:
+    extends:
+      file: ../shared/comfyui/compose.yaml
+      service: comfyui-init
+    volumes:
+      - .:/config:ro
+      - ../../data/image/comfyui:/data
+
+# apps/text/compose.yaml と同じ、どの project にも属さない network
+networks:
+  shared:
+    name: local-ai-chat
+    external: true

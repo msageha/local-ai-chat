@@ -1,6 +1,6 @@
 # 収録モデル
 
-このリポジトリが起動時に pull するモデルの一覧、各モデルの詳細、選んだ根拠、モデルの追加方法をまとめます。どのモデルも `ollama/models.txt` に書かれたものです。
+このリポジトリのアプリが起動時に取得するモデルの一覧、各モデルの詳細、選んだ根拠、モデルの追加方法をまとめます。LLM は `apps/text/models.txt`、画像・動画のモデルは `apps/image/models.txt`・`apps/video/models.txt` に書かれたものです。「[画像・動画のモデル](#画像動画のモデル)」より前の節は LLM について説明します。
 
 ## 用語
 
@@ -36,7 +36,7 @@
 | コンテキスト | 公称の上限のトークン数                                                                                                                                                                                                                                               |
 | サイズ       | Q4 量子化でのダウンロード量で、画像入力用の projector を含む。全モデルで約 360GB、Apple Silicon の構成では `mlx` を付けたモデルの分が加わって約 380GB                                                                                                                |
 | メモリの目安 | Apple Silicon はホストの搭載メモリ、NVIDIA は GPU の VRAM の目安。実行時はサイズに KV cache の分が加わる。Ollama をコンテナで動かす構成 (Apple Silicon の構成以外) では、Docker Desktop の VM にもそれだけのメモリを割り当てる (Docker Desktop の既定はホストの 50%) |
-| pull の順序  | `ollama/models.txt` の上から順。既定のモデル `qwen35-4b-heretic` を先頭に置いている                                                                                                                                                                                  |
+| pull の順序  | `apps/text/models.txt` の上から順。既定のモデル `qwen35-4b-heretic` を先頭に置いている                                                                                                                                                                               |
 | エイリアス   | Ollama には `<alias>:latest` の名前で登録される                                                                                                                                                                                                                      |
 
 ## モデルごとの詳細
@@ -60,7 +60,7 @@
 | `assistant-pepe`     | SicariusSicariiStuff が追加学習              | 125B 以下の uncensored で NatInt が 1 位                                       | 非対応                            | Llama 3.1 Community License                                                     |
 | `llama4`             | なし (Meta 公式)                             | 公称 10M トークンのコンテキストを持つ                                          | 対応                              | Llama 4 Community License                                                       |
 
-各モデルの取得元 (Ollama の tag) は [`ollama/models.txt`](../ollama/models.txt) の 2 列目にあります。
+各モデルの取得元 (Ollama の tag) は [`apps/text/models.txt`](../apps/text/models.txt) の 2 列目にあります。
 
 ### `gemma4-31b-heretic`
 
@@ -192,11 +192,11 @@ UGI Leaderboard はコーディング・端末での作業・画像入力を測�
 
 Apple Silicon の構成の枠は Ollama の library の MLX 形式の tag から、それ以外の枠は Ollama で pull できる単一ファイルの GGUF があるものから選びます。
 
-## モデルを追加する
+## LLM を追加する
 
-1. `ollama/models.txt` に `<alias> <source>` の 1 行を足します。Ollama の library に MLX 形式の tag しか無いモデルは、`<alias> <source> mlx` と書きます。
-2. `mise run digests` を実行し、その行に digest を書き込みます。行は `<alias> <source> sha256:<64 桁の 16 進数> [mlx]` の形になります。
-3. サービスを起動した状態で `mise run pull` を実行します。
+1. `apps/text/models.txt` に `<alias> <source>` の 1 行を足します。Ollama の library に MLX 形式の tag しか無いモデルは、`<alias> <source> mlx` と書きます。
+2. `mise run text:digests` を実行し、その行に digest を書き込みます。行は `<alias> <source> sha256:<64 桁の 16 進数> [mlx]` の形になります。
+3. text アプリを起動した状態で `mise run pull text` を実行します。
 
 `<source>` は、取得元に合わせて次の形で書きます。
 
@@ -212,7 +212,7 @@ tag には次の制約があります。
 
 ### digest の照合
 
-Ollama は digest を指定して pull できません。そのため、tag で pull した後に manifest の sha256 を `ollama/models.txt` の digest と照合します。`mise run models` が表示する ID は、この digest の先頭 12 文字です。
+Ollama は digest を指定して pull できません。そのため、tag で pull した後に manifest の sha256 を `apps/text/models.txt` の digest と照合します。`mise run text:models` が表示する ID は、この digest の先頭 12 文字です。
 
 ```mermaid
 flowchart LR
@@ -225,3 +225,32 @@ flowchart LR
 ```
 
 上流で tag の内容が更新されると、Renovate が digest を更新するまで ([依存関係の更新](development.md#依存関係の更新)) そのモデルは照合に失敗します。
+
+## 画像・動画のモデル
+
+画像と動画のアプリには、それぞれ 1 つのモデルを収録しています。どちらも ComfyUI が追加のノードなしで動かせ、ComfyUI の公式の workflow があるモデルです。ファイルは、ComfyUI 向けに分割して配布している Comfy-Org のリポジトリから取得します。
+
+| アプリ  | モデル          | 構成              | 用途                               | サイズ | メモリの目安                                | ライセンス |
+| ------- | --------------- | ----------------- | ---------------------------------- | ------ | ------------------------------------------- | ---------- |
+| `image` | Z-Image Turbo   | 6B、8 step で生成 | テキストからの画像生成 (1024×1024) | ~21GB  | Apple Silicon 32GB+ / NVIDIA 16GB+          | Apache 2.0 |
+| `video` | Wan 2.2 TI2V 5B | 5B                | テキスト・画像からの動画生成       | ~18GB  | Apple Silicon 32GB+ / NVIDIA 8GB+ (offload) | Apache 2.0 |
+
+| 項目         | 説明                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| サイズ       | diffusion model・text encoder・VAE の合計のダウンロード量                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| メモリの目安 | Apple Silicon では、ComfyUI が diffusion model と text encoder をメインメモリに載せ、Z-Image Turbo の生成中のプロセスは約 26GB になる。32GB では、ほかのアプリと合わせて swap が起き、大幅に遅くなる。NVIDIA は ComfyUI の公式の説明 ([Z-Image Turbo](https://docs.comfy.org/tutorials/image/z-image/z-image-turbo)・[Wan 2.2](https://docs.comfy.org/tutorials/video/wan/wan2_2)) の値。ComfyUI は VRAM に載らない分をメインメモリへ逃がす (offload) ので、下回っても遅くなりながら動くことがある |
+| workflow     | 画像は Open WebUI から `apps/image/open-webui.json` の workflow で生成する。動画は ComfyUI に同梱のテンプレート「Wan 2.2 5B Video Generation」を使う。どちらもモデルをファイル名で参照する                                                                                                                                                                                                                                                                                                         |
+
+選んだ理由は次のとおりです。
+
+- 画像は、32GB の Apple Silicon と 16GB の NVIDIA GPU に載り、少ない step で生成できる Apache 2.0 のモデルから選びました。より大きい FLUX.2 [dev] は非商用のライセンスです。
+- 動画は、32GB の Apple Silicon で動く大きさで Apache 2.0 のものから選びました。同じ系列の Wan 2.5 以降は重みが公開されていません。
+
+## 画像・動画のモデルを追加する
+
+1. ComfyUI の公式の workflow かモデルのページで、必要なファイル (diffusion model・text encoder・VAE など) と置き場 (`diffusion_models`・`text_encoders`・`vae` など) を確かめます。
+2. `apps/image/models.txt` か `apps/video/models.txt` に、ファイルごとに `<directory> <owner>/<repo> <commit sha> <path> <sha256>` の 1 行を足します。commit sha と sha256 は、Hugging Face の API (`https://huggingface.co/api/models/<owner>/<repo>?blobs=true` の `sha` と、各ファイルの `lfs.sha256`) で確かめます。
+3. `mise run pull <app>` を実行します。アプリを起動していなくても取得できます。起動中の ComfyUI は読み込んだモデルをファイル名で覚えているので、同じファイル名のまま版を替えたときは ComfyUI を起動し直します。
+4. Open WebUI から使う画像のモデルに替えるときは、`apps/image/open-webui.json` の workflow をそのモデル用に書き換え、`mise run image:connect-webui` を実行します。workflow は ComfyUI の画面で組み、Export (API) で書き出した形式で書きます。`nodes` は、Open WebUI がプロンプト・サイズ・枚数・seed を書き込むノードの ID です。
+
+取得は、固定した commit の URL からファイルを落とし、sha256 が一致したときだけモデルの置き場に置きます。照合したファイルには `<file>.sha256` を並べて置き、次の起動では照合し直しません。一致しなかったファイルは置かずに警告を出し、全行を処理した後に 0 以外の終了コードで終わります。
